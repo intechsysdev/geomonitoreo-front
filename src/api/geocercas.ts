@@ -44,9 +44,6 @@ export interface ListaGeocercas {
 
 export const listarGeocercas = () => obtenerJson<ListaGeocercas>("/api/v1/geocercas");
 
-/** Trae una geocerca creada en la consola de MobiControl, por su nombre exacto. */
-export const importarGeocerca = (nombre: string) => enviarJson<Geocerca>("/api/v1/geocercas/importar", { nombre });
-
 export const crearGeocerca = (datos: GeocercaCambio) => enviarJson<Geocerca>("/api/v1/geocercas", datos);
 
 export const actualizarGeocerca = (uid: string, datos: GeocercaCambio) =>

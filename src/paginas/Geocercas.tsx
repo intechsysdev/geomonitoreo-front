@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { LngLatBoundsLike, MapLayerMouseEvent, MapMouseEvent } from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
-import { CloudOff, Circle, Download, Hexagon, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from "lucide-react";
+import { CloudOff, Circle, Hexagon, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from "lucide-react";
 import {
-  actualizarGeocerca, crearGeocerca, eliminarGeocerca, importarGeocerca, type Geocerca, type GeocercaCambio, type TipoGeocerca,
+  actualizarGeocerca, crearGeocerca, eliminarGeocerca, type Geocerca, type GeocercaCambio, type TipoGeocerca,
 } from "../api/geocercas";
 import { useEmpresaClave, useFlota, useListaGeocercas } from "../api/consultas";
 import { Aviso, Cargando, Dialogo } from "../componentes/Basicos";
@@ -61,8 +61,6 @@ export function Geocercas() {
   const geocercas = useListaGeocercas();
   const flota = useFlota();
   const lista = useMemo(() => geocercas.data?.geocercas ?? [], [geocercas.data]);
-  const [importando, setImportando] = useState(false);
-  const [nombreImportar, setNombreImportar] = useState("");
 
   const [elegida, setElegida] = useState<string | null>(null);
   const [borrador, setBorrador] = useState<Borrador | null>(null);
@@ -251,18 +249,6 @@ export function Geocercas() {
     onError: (e: Error) => setError(e.message),
   });
 
-  const importar = useMutation({
-    mutationFn: () => importarGeocerca(nombreImportar.trim()),
-    onSuccess: (g) => {
-      setImportando(false);
-      setNombreImportar("");
-      setError(null);
-      setElegida(g.geocercaUid);
-      void queryClient.invalidateQueries({ queryKey: ["geocercas", empresa] });
-    },
-    onError: (e: Error) => setError(e.message),
-  });
-
   /** Una geocerca que ya no está en MobiControl se vuelve a crear allá con su forma guardada. */
   const recrear = useMutation({
     mutationFn: (g: Geocerca) => actualizarGeocerca(g.geocercaUid, {
@@ -300,7 +286,9 @@ export function Geocercas() {
         <div className="panel-cabeza">
           <div>
             <h1>Geocercas</h1>
-            <p className="suave chico">Se guardan en MobiControl: lo que se crea, edita o borra aquí cambia en la consola.</p>
+            <p className="suave chico">
+              Las de la consola de MobiControl, también las creadas allá. Lo que se crea, edita o borra aquí cambia en la consola.
+            </p>
           </div>
           <button
             type="button"
@@ -322,10 +310,6 @@ export function Geocercas() {
           </button>
         </div>
 
-        <button type="button" className="boton chico" onClick={() => { setError(null); setImportando(true); }} disabled={!!borrador}>
-          <Download aria-hidden /> Importar de MobiControl
-        </button>
-
         {error && <Aviso tipo="error">{error}</Aviso>}
         {geocercas.data && !geocercas.data.sincronizadas && (
           <Aviso tipo="alerta">No se pudo leer MobiControl ({geocercas.data.aviso}). Se muestran las formas guardadas.</Aviso>
@@ -338,7 +322,7 @@ export function Geocercas() {
         ) : lista.length === 0 ? (
           <div className="vacio-panel">
             <Hexagon aria-hidden />
-            <p>Todavía no hay geocercas. Dibuja la primera sobre el mapa.</p>
+            <p>La consola de MobiControl no tiene geocercas. Dibuja la primera sobre el mapa.</p>
           </div>
         ) : (
           <ul className="lista-zonas">
@@ -490,32 +474,6 @@ export function Geocercas() {
           {aBorrar?.enMobiControl && " Las reglas de la consola que la usen dejarán de tenerla."} Si solo quieres dejar de
           usarla aquí, desactívala desde Editar.
         </p>
-      </Dialogo>
-
-      <Dialogo
-        abierto={importando}
-        alCerrar={() => setImportando(false)}
-        titulo="Importar de MobiControl"
-        acciones={
-          <>
-            <button type="button" className="boton" onClick={() => setImportando(false)}>Cancelar</button>
-            <button type="submit" form="form-importar" className="boton primario" disabled={importar.isPending || !nombreImportar.trim()}>
-              {importar.isPending ? "Buscando…" : "Importar"}
-            </button>
-          </>
-        }
-      >
-        <form id="form-importar" className="formulario" onSubmit={(e) => { e.preventDefault(); importar.mutate(); }}>
-          <p className="suave chico">
-            Para traer una geocerca creada en la consola de MobiControl, escriba su nombre exacto (con mayúsculas y
-            espacios). MobiControl no permite listarlas, así que se busca por nombre.
-          </p>
-          {error && <Aviso tipo="error">{error}</Aviso>}
-          <label className="etiqueta">
-            Nombre en MobiControl
-            <input className="campo" required maxLength={100} autoFocus value={nombreImportar} onChange={(e) => setNombreImportar(e.target.value)} />
-          </label>
-        </form>
       </Dialogo>
 
       <div className="mapa-esquina">
