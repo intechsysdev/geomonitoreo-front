@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      port: 5177,
+      // 5173 es el origen de desarrollo que One de producción acepta por CORS: el login y la
+      // renovación del token se le piden directo a One, sin pasar por el proxy.
+      port: 5173,
       // En desarrollo /api se reenvía al API: el navegador lo ve como mismo origen.
       proxy: {
         "/api": {

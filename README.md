@@ -22,7 +22,7 @@ Los tokens los emite **Intechsys One**: "Entrar con One" (SSO) o usuario y contr
 
 ```bash
 npm install
-npm run dev        # http://localhost:5177, /api → http://localhost:5240
+npm run dev        # http://localhost:5173 (el origen que One de producción acepta), /api → http://localhost:5240
 ```
 
 Variables (`.env`): `VITE_API_PROXY`, `VITE_ONE_URL`, `VITE_ONE_PORTAL_URL`. En producción, `VITE_API_URL` con la URL del API.
