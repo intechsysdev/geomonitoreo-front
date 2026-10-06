@@ -589,8 +589,8 @@
     position: absolute;
     z-index: 4;
     inset-block-start: var(--separacion);
-    inset-inline-start: 50%;
-    translate: -50% 0;
+    /* Sobre el mapa, a la derecha del panel: centrada en la pantalla tapaba el panel. */
+    inset-inline-start: calc(min(25rem, 100%) + var(--separacion) * 2);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -809,6 +809,7 @@
       max-block-size: 52dvh;
     }
     .detalle-equipo { inset: var(--separacion); inline-size: auto; }
+    .barra-dibujo { inset-inline: var(--separacion); }
     .barra-superior { inset-inline: var(--separacion) auto; }
     .mapa-esquina { inset-block: 4rem auto; flex-direction: column; align-items: flex-end; }
     .controles-mapa { flex-direction: column; }

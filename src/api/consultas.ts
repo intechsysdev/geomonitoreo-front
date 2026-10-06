@@ -28,7 +28,14 @@ export function useFlota(activa = true) {
   });
 }
 
-export function useGeocercas() {
+/** La lista completa, con si se pudo sincronizar con MobiControl. */
+export function useListaGeocercas() {
   const empresa = useEmpresaClave();
   return useQuery({ queryKey: ["geocercas", empresa], queryFn: listarGeocercas, staleTime: 60_000 });
+}
+
+/** Solo las geocercas, para las pantallas que las dibujan o las nombran. */
+export function useGeocercas() {
+  const empresa = useEmpresaClave();
+  return useQuery({ queryKey: ["geocercas", empresa], queryFn: listarGeocercas, staleTime: 60_000, select: (d) => d.geocercas });
 }

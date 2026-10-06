@@ -14,6 +14,10 @@ export interface Geocerca {
   vertices: [number, number][];
   color: string;
   activa: boolean;
+  /** False si la borraron en la consola de MobiControl. */
+  enMobiControl: boolean;
+  referenceId: string | null;
+  fechaSincronizacion: string | null;
   creadaPor: string | null;
   fechaCreacion: string;
   fechaActualizacion: string | null;
@@ -31,7 +35,17 @@ export interface GeocercaCambio {
   activa: boolean;
 }
 
-export const listarGeocercas = () => obtenerJson<Geocerca[]>("/api/v1/geocercas");
+/** sincronizadas en false: MobiControl no respondió y se muestran las formas guardadas. */
+export interface ListaGeocercas {
+  geocercas: Geocerca[];
+  sincronizadas: boolean;
+  aviso: string | null;
+}
+
+export const listarGeocercas = () => obtenerJson<ListaGeocercas>("/api/v1/geocercas");
+
+/** Trae una geocerca creada en la consola de MobiControl, por su nombre exacto. */
+export const importarGeocerca = (nombre: string) => enviarJson<Geocerca>("/api/v1/geocercas/importar", { nombre });
 
 export const crearGeocerca = (datos: GeocercaCambio) => enviarJson<Geocerca>("/api/v1/geocercas", datos);
 
