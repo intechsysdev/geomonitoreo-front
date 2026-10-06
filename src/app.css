@@ -1,0 +1,824 @@
+@layer componentes {
+  /* =======================================================================================
+     Marco: riel de navegación + contenido.
+     ======================================================================================= */
+  .marco {
+    display: grid;
+    grid-template-columns: var(--riel) 1fr;
+    block-size: 100dvh;
+    overflow: hidden;
+  }
+
+  .riel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding-block: 0.9rem;
+    background: var(--superficie);
+    border-inline-end: 1px solid var(--linea);
+    z-index: 5;
+  }
+
+  .riel-logo { display: grid; place-items: center; margin-block-end: 0.5rem; }
+  .riel-logo .logo-barrido { transform-origin: 16px 16px; animation: barrido 4s linear infinite; --animation-reduced: none; }
+
+  @keyframes barrido { to { rotate: 1turn; } }
+
+  .riel-lista { display: grid; gap: 0.35rem; }
+
+  .riel-enlace {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    border: 0;
+    border-radius: 12px;
+    color: var(--tinta-suave);
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+
+    & svg { inline-size: 1.3rem; block-size: 1.3rem; }
+    &:hover { background: var(--hundido); color: var(--tinta); }
+
+    &.active {
+      color: var(--marca);
+      background: var(--marca-suave);
+      &::before {
+        content: "";
+        position: absolute;
+        inset-inline-start: -0.95rem;
+        inset-block: 0.6rem;
+        inline-size: 3px;
+        border-radius: 0 3px 3px 0;
+        background: var(--marca);
+      }
+    }
+
+    /* Rótulo al pasar el puntero: el riel solo tiene íconos. */
+    &::after {
+      content: attr(data-titulo);
+      position: absolute;
+      inset-inline-start: calc(100% + 0.6rem);
+      padding: 0.3rem 0.6rem;
+      border-radius: 7px;
+      background: var(--tinta);
+      color: var(--superficie);
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      translate: -4px 0;
+      pointer-events: none;
+      transition: opacity 0.12s, translate 0.12s;
+      z-index: 20;
+    }
+    &:is(:hover, :focus-visible)::after { opacity: 1; translate: 0; }
+  }
+
+  .riel-pie { margin-block-start: auto; display: grid; gap: 0.5rem; justify-items: center; }
+
+  .avatar {
+    inline-size: 2.4rem;
+    block-size: 2.4rem;
+    border-radius: 50%;
+    border: 2px solid var(--marca-suave);
+    background: linear-gradient(135deg, #22d3ee, #0e7490);
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .menu-usuario {
+    position: fixed;
+    inset: auto auto 0.9rem calc(var(--riel) + 0.6rem);
+    margin: 0;
+    inline-size: 16rem;
+    padding: 0.6rem;
+    color: var(--tinta);
+    display: none;
+
+    &:where(:popover-open, .\:popover-open) { display: grid; gap: 0.4rem; }
+    & .boton { justify-content: flex-start; }
+  }
+
+  .menu-usuario-cabeza { display: grid; padding: 0.4rem 0.6rem 0.6rem; border-block-end: 1px solid var(--linea); overflow-wrap: anywhere; }
+
+  .marco-contenido {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+    overflow: hidden;
+  }
+
+  /* La barra superior flota sobre el mapa; en las páginas sin mapa ocupa su lugar arriba. */
+  .barra-superior {
+    position: absolute;
+    inset-block-start: var(--separacion);
+    inset-inline-end: var(--separacion);
+    z-index: 4;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+
+    &:empty { display: none; }
+  }
+
+  .selector-empresa {
+    inline-size: auto;
+    min-inline-size: 12rem;
+    font-weight: 700;
+    background: var(--vidrio);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--sombra);
+  }
+
+  .empresa-fija {
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    background: var(--vidrio);
+    border: 1px solid var(--vidrio-borde);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--sombra);
+  }
+
+  /* =======================================================================================
+     Pantallas con mapa.
+     ======================================================================================= */
+  .pantalla-mapa {
+    position: relative;
+    flex: 1;
+    min-block-size: 0;
+    isolation: isolate;
+  }
+
+  .mapa { position: absolute; inset: 0; }
+
+  .maplibregl-ctrl-attrib { font-size: 0.6875rem; }
+
+  .panel-flota {
+    position: absolute;
+    inset-block: var(--separacion);
+    inset-inline-start: var(--separacion);
+    z-index: 3;
+    inline-size: min(25rem, calc(100% - 2 * var(--separacion)));
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    overflow: hidden;
+    container-type: inline-size;
+  }
+
+  .panel-cabeza {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+
+    & h1 { font-size: 1.25rem; font-weight: 800; }
+  }
+
+  .girando { animation: girar 0.9s linear infinite; --animation-reduced: none; }
+
+  /* Indicadores que también filtran. */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+
+  .kpi {
+    --color: var(--marca);
+    display: grid;
+    gap: 0.05rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radio-chico);
+    border: 1px solid var(--linea);
+    background: color-mix(in oklab, var(--superficie) 70%, transparent);
+    text-align: start;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+
+    &[data-filtro="en-linea"] { --color: var(--ok); }
+    &[data-filtro="sin-senal"] { --color: var(--peligro); }
+    &[data-filtro="bateria"] { --color: var(--aviso); }
+    &[data-filtro="inactivo"], &[data-filtro="sin-ubicacion"] { --color: var(--apagado); }
+
+    &:hover { border-color: color-mix(in oklab, var(--color) 50%, transparent); }
+    &[aria-pressed="true"] {
+      border-color: var(--color);
+      background: color-mix(in oklab, var(--color) 12%, var(--superficie));
+    }
+  }
+
+  .kpi-numero { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--color); line-height: 1.2; }
+  .kpi-nombre { font-size: 0.6875rem; font-weight: 700; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  .lista-equipos, .lista-zonas {
+    flex: 1;
+    overflow-y: auto;
+    margin-inline: -0.5rem;
+    padding-inline: 0.5rem;
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    scrollbar-width: thin;
+  }
+
+  .lista-equipos > li {
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 3.6rem;
+  }
+
+  .item-equipo, .zona-principal {
+    inline-size: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.65rem;
+    border: 1px solid transparent;
+    border-radius: var(--radio-chico);
+    background: transparent;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color 0.12s, border-color 0.12s;
+
+    &:hover { background: color-mix(in oklab, var(--tinta) 5%, transparent); }
+    &[aria-current="true"] { background: var(--marca-suave); border-color: color-mix(in oklab, var(--marca) 35%, transparent); }
+  }
+
+  .item-texto { flex: 1; min-inline-size: 0; display: grid; }
+  .item-nombre { font-weight: 700; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-sub { font-size: 0.75rem; color: var(--tinta-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-lado { display: grid; justify-items: end; gap: 0.15rem; }
+  .item-tiempo { display: inline-flex; gap: 0.25rem; align-items: center; font-size: 0.6875rem; color: var(--tinta-suave); white-space: nowrap; }
+  .item-tiempo svg { inline-size: 0.8rem; block-size: 0.8rem; color: var(--aviso); }
+
+  .vacio-lista { padding: 1.5rem 0.5rem; text-align: center; }
+
+  .vacio-panel {
+    flex: 1;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--tinta-suave);
+
+    & svg { inline-size: 2.5rem; block-size: 2.5rem; color: var(--marca); opacity: 0.6; }
+  }
+
+  /* Esquina inferior derecha: controles del mapa. */
+  .mapa-esquina {
+    position: absolute;
+    inset-block-end: calc(var(--separacion) + 1.25rem);
+    inset-inline-end: var(--separacion);
+    z-index: 3;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+
+  /* En Recorridos los controles suben: abajo va el reproductor. */
+  .mapa-esquina.arriba { inset-block: calc(var(--separacion) + 3.4rem) auto; align-items: flex-start; }
+
+  .controles-mapa { display: flex; align-items: flex-end; gap: 0.5rem; }
+  .controles-mapa .segmentado { align-items: center; }
+  .controles-icono { inline-size: 1rem; block-size: 1rem; margin-inline: 0.4rem 0.15rem; color: var(--tinta-suave); }
+
+  .controles-pila {
+    display: flex;
+    padding: 3px;
+    border-radius: 12px;
+
+    & button {
+      display: grid;
+      place-items: center;
+      inline-size: 2.3rem;
+      block-size: 2.3rem;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--tinta);
+      cursor: pointer;
+      &:hover { background: var(--hundido); }
+    }
+    & svg { inline-size: 1.05rem; block-size: 1.05rem; }
+  }
+
+  .interruptor {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .chip-equipo {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.5rem 0.85rem;
+    border-radius: 12px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  /* Marca del equipo elegido: un pulso de radar. */
+  .pulso {
+    --color: #94a3b8;
+    inline-size: 22px;
+    block-size: 22px;
+    border-radius: 50%;
+    background: var(--color);
+    border: 3px solid white;
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color) 60%, transparent), 0 4px 12px rgb(0 0 0 / 0.35);
+    animation: pulso 1.8s ease-out infinite;
+    --animation-reduced: none;
+
+    &[data-estado="en-linea"] { --color: #22c55e; }
+    &[data-estado="sin-senal"] { --color: #ef4444; }
+  }
+
+  @keyframes pulso {
+    to { box-shadow: 0 0 0 22px color-mix(in oklab, var(--color) 0%, transparent), 0 4px 12px rgb(0 0 0 / 0.35); }
+  }
+
+  /* =======================================================================================
+     Detalle del equipo: cajón a la derecha.
+     ======================================================================================= */
+  .detalle-equipo {
+    position: absolute;
+    inset-block-start: calc(var(--separacion) + 3.25rem);
+    inset-block-end: calc(var(--separacion) + 5rem);
+    inset-inline-end: var(--separacion);
+    z-index: 3;
+    inline-size: min(23rem, calc(100% - 2 * var(--separacion)));
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.1rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    animation: entrar-derecha 0.22s ease-out;
+    --animation-reduced: none;
+  }
+
+  @keyframes entrar-derecha { from { opacity: 0; translate: 1rem 0; } }
+
+  .detalle-cabeza { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
+  .detalle-titulo { display: grid; gap: 0.35rem; justify-items: start; min-inline-size: 0; }
+  .detalle-titulo h2 { font-size: 1.2rem; font-weight: 800; overflow-wrap: anywhere; }
+
+  .detalle-indicadores {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+
+    & > div {
+      position: relative;
+      display: grid;
+      gap: 0.2rem;
+      padding: 0.6rem;
+      border-radius: var(--radio-chico);
+      background: color-mix(in oklab, var(--hundido) 75%, transparent);
+    }
+    & strong { font-size: 0.875rem; }
+  }
+
+  .etiqueta-mini { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tinta-suave); }
+  .alerta-icono { position: absolute; inset-block-start: 0.5rem; inset-inline-end: 0.5rem; inline-size: 1rem; color: var(--peligro); }
+
+  .detalle-bloque {
+    display: grid;
+    gap: 0.5rem;
+    & h3 { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tinta-suave); }
+  }
+
+  .coordenadas { display: flex; align-items: center; gap: 0.35rem; }
+  .icono-enlace { display: inline; inline-size: 0.85em; block-size: 0.85em; vertical-align: -0.1em; }
+  .zonas { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+  .datos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem 1rem;
+    & dt { font-size: 0.6875rem; font-weight: 700; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: 0.03em; }
+    & dd { margin: 0; font-size: 0.8125rem; font-weight: 600; overflow-wrap: anywhere; }
+  }
+
+  .detalle-acciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-block-start: auto;
+    padding-block-start: 0.5rem;
+  }
+
+  /* =======================================================================================
+     Recorridos.
+     ======================================================================================= */
+  .panel-recorrido { inset-block-end: calc(var(--separacion) + 6rem); }
+  .ancho-completo { display: flex; & button { flex: 1; justify-content: center; } }
+  .rango-personalizado { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .recorrido-cuerpo { flex: 1; overflow-y: auto; display: grid; align-content: start; gap: 0.9rem; margin-inline: -0.5rem; padding-inline: 0.5rem; scrollbar-width: thin; }
+
+  .estadisticas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+
+  .estadistica {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.6rem;
+    border-radius: var(--radio-chico);
+    background: color-mix(in oklab, var(--hundido) 75%, transparent);
+
+    & svg { inline-size: 1rem; block-size: 1rem; color: var(--marca); margin-block-end: 0.2rem; }
+    & strong { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    & span { font-size: 0.6875rem; color: var(--tinta-suave); font-weight: 600; }
+  }
+
+  .leyenda-velocidad {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--tinta-suave);
+    & .degradado { flex: 1; block-size: 6px; border-radius: 3px; background: linear-gradient(to right, #38bdf8, #22c55e, #eab308, #f97316, #dc2626); }
+  }
+
+  .linea-tiempo {
+    display: grid;
+    gap: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hito {
+    --color: var(--marca);
+    position: relative;
+    display: flex;
+    gap: 0.7rem;
+    padding-block: 0.45rem;
+
+    &[data-tono="ok"] { --color: var(--ok); }
+    &[data-tono="aviso"] { --color: var(--aviso); }
+    &[data-tono="parada"] { --color: oklch(55% 0.2 295); }
+    &[data-tono="fin"] { --color: var(--tinta); }
+
+    & > div { display: grid; font-size: 0.8125rem; }
+
+    &:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      inset-inline-start: 0.85rem;
+      inset-block: 2.1rem -0.2rem;
+      inline-size: 2px;
+      background: var(--linea);
+    }
+  }
+
+  .hito-icono {
+    display: grid;
+    place-items: center;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    flex: none;
+    border-radius: 50%;
+    color: var(--color);
+    background: color-mix(in oklab, var(--color) 15%, transparent);
+    & svg { inline-size: 0.9rem; block-size: 0.9rem; }
+  }
+
+  .reproductor {
+    position: absolute;
+    z-index: 3;
+    inset-block-end: var(--separacion);
+    inset-inline: calc(var(--separacion) * 2 + min(25rem, 100%)) calc(var(--separacion) + 1rem);
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.7rem 0.9rem;
+  }
+
+  .reproductor-pista { flex: 1; display: grid; gap: 0.2rem; min-inline-size: 0; }
+  .reproductor-tiempos { display: flex; justify-content: space-between; gap: 0.5rem; }
+
+  .reproductor input[type="range"] {
+    --avance: 0%;
+    appearance: none;
+    inline-size: 100%;
+    block-size: 1.25rem;
+    background: transparent;
+    cursor: pointer;
+
+    &::-webkit-slider-runnable-track {
+      block-size: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to right, var(--marca) var(--avance), color-mix(in oklab, var(--tinta) 15%, transparent) 0);
+    }
+    &::-moz-range-track { block-size: 6px; border-radius: 3px; background: color-mix(in oklab, var(--tinta) 15%, transparent); }
+    &::-moz-range-progress { block-size: 6px; border-radius: 3px; background: var(--marca); }
+
+    &::-webkit-slider-thumb {
+      appearance: none;
+      inline-size: 1.05rem;
+      block-size: 1.05rem;
+      margin-block-start: calc(3px - 0.525rem);
+      border-radius: 50%;
+      background: var(--superficie);
+      border: 3px solid var(--marca);
+      box-shadow: var(--sombra);
+    }
+    &::-moz-range-thumb {
+      inline-size: 0.8rem;
+      block-size: 0.8rem;
+      border-radius: 50%;
+      background: var(--superficie);
+      border: 3px solid var(--marca);
+    }
+  }
+
+  .vehiculo {
+    inline-size: 20px;
+    block-size: 20px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #67e8f9, #0e7490);
+    border: 3px solid white;
+    box-shadow: 0 0 0 6px rgb(14 116 144 / 0.25), 0 4px 10px rgb(0 0 0 / 0.35);
+  }
+
+  /* =======================================================================================
+     Geocercas.
+     ======================================================================================= */
+  .botones-dibujo { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+  .zona {
+    border-radius: var(--radio-chico);
+    border: 1px solid transparent;
+
+    &[aria-current="true"] { background: var(--marca-suave); border-color: color-mix(in oklab, var(--marca) 35%, transparent); }
+    & .zona-principal[aria-current], &[aria-current="true"] .zona-principal:hover { background: transparent; }
+  }
+
+  .zona-color {
+    inline-size: 0.9rem;
+    block-size: 0.9rem;
+    border-radius: 4px;
+    flex: none;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+  }
+
+  .zona-acciones { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0 0.65rem 0.65rem; }
+
+  .barra-dibujo {
+    position: absolute;
+    z-index: 4;
+    inset-block-start: var(--separacion);
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.7rem 0.55rem 1rem;
+    max-inline-size: calc(100% - 2rem);
+  }
+
+  .formulario { display: grid; gap: 0.9rem; }
+
+  .colores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    & legend { margin-block-end: 0.35rem; }
+  }
+
+  .muestra {
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: 50%;
+    background: var(--muestra);
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+    transition: box-shadow 0.12s;
+
+    & input { position: absolute; opacity: 0; pointer-events: none; }
+    &:has(:checked) { box-shadow: 0 0 0 3px var(--superficie), 0 0 0 5px var(--muestra); }
+    &:has(:focus-visible) { outline: 2px solid var(--marca); outline-offset: 4px; }
+  }
+
+  .interruptor-linea { display: flex; gap: 0.5rem; align-items: center; font-size: 0.875rem; }
+
+  /* =======================================================================================
+     Páginas sin mapa.
+     ======================================================================================= */
+  .pagina {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 2.5rem;
+    padding-block-start: 4.5rem;
+    display: grid;
+    align-content: start;
+    gap: 1.1rem;
+  }
+
+  .pagina-cabeza {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    & h1 { font-size: clamp(1.4rem, 1.1rem + 1vw, 1.9rem); font-weight: 800; }
+  }
+
+  .filtros {
+    display: grid;
+    grid-template-columns: minmax(14rem, 1fr) auto auto;
+    gap: 0.6rem;
+    & select { inline-size: auto; }
+  }
+
+  .tabla-contenedor { overflow: auto; max-block-size: calc(100dvh - 15rem); }
+  .celda-estado { display: inline-flex; gap: 0.5rem; align-items: center; font-weight: 600; white-space: nowrap; }
+  .acciones-fila { display: flex; gap: 0.35rem; justify-content: flex-end; }
+  .sin-salto { white-space: nowrap; }
+
+  /* =======================================================================================
+     Ingreso.
+     ======================================================================================= */
+  .ingreso {
+    display: grid;
+    grid-template-columns: 1.15fr minmax(22rem, 1fr);
+    min-block-size: 100dvh;
+  }
+
+  .ingreso-escena {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    align-content: end;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
+    color: white;
+    background:
+      radial-gradient(circle at 30% 20%, rgb(34 211 238 / 0.25), transparent 45%),
+      radial-gradient(circle at 80% 90%, rgb(14 116 144 / 0.5), transparent 55%),
+      linear-gradient(160deg, #0b1d2e, #06121d 60%, #041019);
+
+    /* Cuadrícula de mapa. */
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 0) 0 0 / 3rem 3rem,
+        linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 0) 0 0 / 3rem 3rem;
+      mask-image: radial-gradient(circle at 50% 40%, black, transparent 75%);
+    }
+  }
+
+  .radar {
+    position: absolute;
+    inset-block-start: 8%;
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    inline-size: min(34rem, 80%);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle, transparent 0 24.5%, rgb(103 232 249 / 0.18) 25% 25.4%, transparent 25.8% 49.5%,
+        rgb(103 232 249 / 0.14) 50% 50.4%, transparent 50.8% 74.5%, rgb(103 232 249 / 0.1) 75% 75.4%, transparent 75.8%);
+    border: 1px solid rgb(103 232 249 / 0.18);
+  }
+
+  .radar-barrido {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, rgb(34 211 238 / 0.35), transparent 22%);
+    animation: barrido 5s linear infinite;
+    --animation-reduced: none;
+  }
+
+  .radar-punto {
+    position: absolute;
+    inline-size: 9px;
+    block-size: 9px;
+    border-radius: 50%;
+    background: #67e8f9;
+    box-shadow: 0 0 12px #22d3ee;
+    animation: titilar 5s ease-in-out infinite;
+    --animation-reduced: none;
+  }
+
+  @keyframes titilar { 0%, 100% { opacity: 0.25; scale: 0.8; } 15% { opacity: 1; scale: 1.25; } }
+
+  .ingreso-mensaje {
+    position: relative;
+    display: grid;
+    gap: 1.1rem;
+    max-inline-size: 30rem;
+
+    & h2 { font-size: clamp(1.6rem, 1.1rem + 1.8vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; }
+    & ul { display: grid; gap: 0.6rem; padding: 0; list-style: none; color: rgb(255 255 255 / 0.8); }
+    & li { display: flex; gap: 0.6rem; align-items: center; }
+    & svg { inline-size: 1.1rem; block-size: 1.1rem; color: #67e8f9; flex: none; }
+  }
+
+  .ingreso-panel {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: clamp(1.25rem, 3vw, 2.5rem);
+    background: var(--superficie);
+  }
+
+  .ingreso-arriba { display: flex; justify-content: space-between; align-items: center; }
+  .marca-texto { display: inline-flex; gap: 0.6rem; align-items: center; font-weight: 800; font-size: 1.05rem; }
+
+  .ingreso-formulario {
+    align-self: center;
+    justify-self: center;
+    inline-size: min(100%, 23rem);
+    display: grid;
+    gap: 1rem;
+    & h1 { font-size: 1.75rem; font-weight: 800; }
+  }
+
+  .boton.grande { min-block-size: 2.85rem; font-size: 0.9375rem; text-decoration: none; }
+
+  .separador {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--tinta-suave);
+    &::before, &::after { content: ""; flex: 1; block-size: 1px; background: var(--linea); }
+  }
+
+  .ingreso-pie { text-align: center; }
+
+  .pantalla-paso {
+    display: grid;
+    place-items: center;
+    min-block-size: 100dvh;
+    padding: 1rem;
+  }
+
+  .paso-sso { display: grid; gap: 0.9rem; padding: 2rem; max-inline-size: 28rem; text-align: center; justify-items: center; }
+  .fila-botones { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+
+  /* =======================================================================================
+     Pantallas angostas: el riel baja, el panel se vuelve una hoja inferior.
+     ======================================================================================= */
+  @media (width < 760px) {
+    .marco { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+    .riel {
+      order: 2;
+      flex-direction: row;
+      justify-content: space-around;
+      padding: 0.4rem 0.75rem;
+      border-inline-end: 0;
+      border-block-start: 1px solid var(--linea);
+    }
+    .riel-logo, .riel-enlace::after, .riel-enlace.active::before { display: none; }
+    .riel-lista { display: flex; }
+    .riel-pie { margin: 0; display: flex; }
+    .menu-usuario { inset: auto 0.75rem 4.5rem auto; }
+
+    .panel-flota {
+      inset-block: auto var(--separacion);
+      inset-inline: var(--separacion);
+      inline-size: auto;
+      max-block-size: 52dvh;
+    }
+    .detalle-equipo { inset: var(--separacion); inline-size: auto; }
+    .barra-superior { inset-inline: var(--separacion) auto; }
+    .mapa-esquina { inset-block: 4rem auto; flex-direction: column; align-items: flex-end; }
+    .controles-mapa { flex-direction: column; }
+    .reproductor { inset-inline: var(--separacion); inset-block-end: calc(52dvh + 1.5rem); }
+    .ingreso { grid-template-columns: 1fr; }
+    .ingreso-escena { display: none; }
+    .filtros { grid-template-columns: 1fr; }
+  }
+
+  @container (width < 22rem) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+  }
+}

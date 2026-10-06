@@ -1,0 +1,446 @@
+@layer reset, terceros, base, tema, componentes, utilidades;
+
+/* El CSS de MapLibre va en su propia capa: sin capa le ganaría a todo lo nuestro (le quitaba al
+   contenedor del mapa el position: absolute y el mapa quedaba de alto cero). */
+@import "maplibre-gl/dist/maplibre-gl.css" layer(terceros);
+
+/* =========================================================================================
+   Tokens. Primero los literales; después los semánticos, que resuelven claro/oscuro con
+   light-dark() (con respaldo por media query para navegadores que todavía no lo tienen).
+   ========================================================================================= */
+:root {
+  --fuente: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --fuente-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+
+  /* Marca: un cian profundo, del agua y del radar. */
+  --marca-claro: oklch(52% 0.115 214);
+  --marca-oscuro: oklch(80% 0.13 200);
+
+  /* Señales: lo único con color fuerte en la pantalla. */
+  --ok-claro: oklch(60% 0.16 152);
+  --ok-oscuro: oklch(78% 0.17 152);
+  --aviso-claro: oklch(66% 0.15 70);
+  --aviso-oscuro: oklch(82% 0.15 80);
+  --peligro-claro: oklch(57% 0.2 25);
+  --peligro-oscuro: oklch(72% 0.17 22);
+  --apagado-claro: oklch(60% 0.02 255);
+  --apagado-oscuro: oklch(66% 0.02 255);
+
+  --fondo-claro: oklch(97.6% 0.004 240);
+  --fondo-oscuro: oklch(16.5% 0.018 255);
+  --superficie-claro: oklch(100% 0 0);
+  --superficie-oscuro: oklch(21.5% 0.02 255);
+  --hundido-claro: oklch(95.5% 0.006 240);
+  --hundido-oscuro: oklch(25.5% 0.02 255);
+  --tinta-claro: oklch(23% 0.025 255);
+  --tinta-oscuro: oklch(95% 0.008 240);
+  --tinta-suave-claro: oklch(48% 0.02 255);
+  --tinta-suave-oscuro: oklch(72% 0.015 250);
+  --linea-claro: oklch(90% 0.008 250);
+  --linea-oscuro: oklch(32% 0.02 255);
+
+  --marca: var(--marca-claro);
+  --ok: var(--ok-claro);
+  --aviso: var(--aviso-claro);
+  --peligro: var(--peligro-claro);
+  --apagado: var(--apagado-claro);
+  --fondo: var(--fondo-claro);
+  --superficie: var(--superficie-claro);
+  --hundido: var(--hundido-claro);
+  --tinta: var(--tinta-claro);
+  --tinta-suave: var(--tinta-suave-claro);
+  --linea: var(--linea-claro);
+
+  @media (prefers-color-scheme: dark) {
+    --marca: var(--marca-oscuro);
+    --ok: var(--ok-oscuro);
+    --aviso: var(--aviso-oscuro);
+    --peligro: var(--peligro-oscuro);
+    --apagado: var(--apagado-oscuro);
+    --fondo: var(--fondo-oscuro);
+    --superficie: var(--superficie-oscuro);
+    --hundido: var(--hundido-oscuro);
+    --tinta: var(--tinta-oscuro);
+    --tinta-suave: var(--tinta-suave-oscuro);
+    --linea: var(--linea-oscuro);
+  }
+
+  @supports (color: light-dark(white, black)) {
+    --marca: light-dark(var(--marca-claro), var(--marca-oscuro));
+    --ok: light-dark(var(--ok-claro), var(--ok-oscuro));
+    --aviso: light-dark(var(--aviso-claro), var(--aviso-oscuro));
+    --peligro: light-dark(var(--peligro-claro), var(--peligro-oscuro));
+    --apagado: light-dark(var(--apagado-claro), var(--apagado-oscuro));
+    --fondo: light-dark(var(--fondo-claro), var(--fondo-oscuro));
+    --superficie: light-dark(var(--superficie-claro), var(--superficie-oscuro));
+    --hundido: light-dark(var(--hundido-claro), var(--hundido-oscuro));
+    --tinta: light-dark(var(--tinta-claro), var(--tinta-oscuro));
+    --tinta-suave: light-dark(var(--tinta-suave-claro), var(--tinta-suave-oscuro));
+    --linea: light-dark(var(--linea-claro), var(--linea-oscuro));
+  }
+
+  /* Vidrio: los paneles flotan sobre el mapa sin taparlo del todo. */
+  --vidrio: color-mix(in oklab, var(--superficie) 80%, transparent);
+  --vidrio-borde: color-mix(in oklab, var(--tinta) 10%, transparent);
+  --marca-suave: color-mix(in oklab, var(--marca) 14%, transparent);
+  --sombra: 0 1px 2px oklch(0% 0 0 / 0.06), 0 8px 24px -8px oklch(20% 0.03 255 / 0.22);
+  --sombra-alta: 0 2px 4px oklch(0% 0 0 / 0.08), 0 24px 48px -12px oklch(20% 0.04 255 / 0.35);
+
+  --radio: 14px;
+  --radio-chico: 9px;
+  --riel: 4.25rem;
+  --separacion: 0.75rem;
+
+  color-scheme: light dark;
+  accent-color: var(--marca);
+  scrollbar-color: color-mix(in oklab, var(--tinta) 25%, transparent) transparent;
+}
+
+:root[data-tema="light"] { color-scheme: light; }
+:root[data-tema="dark"] { color-scheme: dark; }
+
+/* Sin light-dark(), el tema fijado se aplica con las variables a mano. */
+@supports not (color: light-dark(white, black)) {
+  :root[data-tema="dark"] {
+    --marca: var(--marca-oscuro); --ok: var(--ok-oscuro); --aviso: var(--aviso-oscuro);
+    --peligro: var(--peligro-oscuro); --apagado: var(--apagado-oscuro); --fondo: var(--fondo-oscuro);
+    --superficie: var(--superficie-oscuro); --hundido: var(--hundido-oscuro); --tinta: var(--tinta-oscuro);
+    --tinta-suave: var(--tinta-suave-oscuro); --linea: var(--linea-oscuro);
+  }
+  :root[data-tema="light"] {
+    --marca: var(--marca-claro); --ok: var(--ok-claro); --aviso: var(--aviso-claro);
+    --peligro: var(--peligro-claro); --apagado: var(--apagado-claro); --fondo: var(--fondo-claro);
+    --superficie: var(--superficie-claro); --hundido: var(--hundido-claro); --tinta: var(--tinta-claro);
+    --tinta-suave: var(--tinta-suave-claro); --linea: var(--linea-claro);
+  }
+}
+
+/* ========================================================================================= */
+@layer reset {
+  html, body { margin: 0; }
+  body, h1, h2, h3, h4, p, ul, ol, dl, dd, figure { margin: 0; }
+  ul[class], ol[class] { padding: 0; list-style: none; }
+  img, svg { display: block; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :where(*, *::before, *::after) { box-sizing: border-box; }
+}
+
+@layer base {
+  html { block-size: 100%; }
+
+  body {
+    min-block-size: 100dvh;
+    font-family: var(--fuente);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--tinta);
+    background: var(--fondo);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root { min-block-size: 100dvh; }
+
+  h1, h2, h3 { line-height: 1.2; text-wrap: balance; letter-spacing: -0.015em; }
+  p { text-wrap: pretty; }
+
+  a { color: var(--marca); text-underline-offset: 0.2em; }
+
+  :focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; }
+
+  ::selection { background: color-mix(in oklab, var(--marca) 30%, transparent); }
+
+  .mono { font-family: var(--fuente-mono); font-size: 0.86em; letter-spacing: -0.01em; }
+}
+
+@layer componentes {
+  /* ---------------- Botones ---------------- */
+  .boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-block-size: 2.4rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--linea);
+    border-radius: var(--radio-chico);
+    background: var(--superficie);
+    color: var(--tinta);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, translate 0.1s;
+
+    &:hover:not(:disabled) { border-color: color-mix(in oklab, var(--tinta) 25%, transparent); }
+    &:active:not(:disabled) { translate: 0 1px; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    &.primario {
+      background: var(--marca);
+      border-color: transparent;
+      color: light-dark(white, oklch(18% 0.03 230));
+      &:hover:not(:disabled) { background: color-mix(in oklab, var(--marca) 88%, black); }
+    }
+
+    &.peligro { color: var(--peligro); }
+    &.peligro-lleno { background: var(--peligro); border-color: transparent; color: white; }
+    &.fantasma { background: transparent; border-color: transparent; }
+    &.fantasma:hover:not(:disabled) { background: var(--hundido); }
+    &.chico { min-block-size: 2rem; padding-inline: 0.7rem; font-size: 0.8125rem; }
+    &.icono { inline-size: 2.4rem; padding: 0; }
+    &.chico.icono { inline-size: 2rem; }
+    &.ancho { inline-size: 100%; }
+
+    & svg { inline-size: 1.05em; block-size: 1.05em; flex: none; }
+  }
+
+  /* ---------------- Campos ---------------- */
+  .campo {
+    inline-size: 100%;
+    min-block-size: 2.4rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--linea);
+    border-radius: var(--radio-chico);
+    background: var(--superficie);
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:focus-visible { outline: none; border-color: var(--marca); box-shadow: 0 0 0 3px var(--marca-suave); }
+    &:user-invalid { border-color: var(--peligro); }
+    &::placeholder { color: color-mix(in oklab, var(--tinta-suave) 80%, transparent); }
+  }
+
+  textarea.campo { resize: vertical; field-sizing: content; min-block-size: 4.5rem; }
+
+  .etiqueta {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--tinta-suave);
+  }
+
+  .buscador {
+    position: relative;
+    & svg { position: absolute; inset-inline-start: 0.7rem; inset-block-start: 50%; translate: 0 -50%; inline-size: 1rem; color: var(--tinta-suave); pointer-events: none; }
+    & .campo { padding-inline-start: 2.1rem; }
+  }
+
+  /* ---------------- Tarjetas y paneles ---------------- */
+  .tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--linea);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+  }
+
+  .vidrio {
+    background: var(--vidrio);
+    border: 1px solid var(--vidrio-borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra-alta);
+    backdrop-filter: blur(18px) saturate(1.5);
+  }
+
+  /* ---------------- Insignias y estados ---------------- */
+  .punto-estado {
+    --color: var(--apagado);
+    inline-size: 0.6rem;
+    block-size: 0.6rem;
+    border-radius: 50%;
+    background: var(--color);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color) 22%, transparent);
+    flex: none;
+
+    &[data-estado="en-linea"] { --color: var(--ok); }
+    &[data-estado="sin-senal"] { --color: var(--peligro); }
+  }
+
+  .insignia {
+    --color: var(--tinta-suave);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color);
+    background: color-mix(in oklab, var(--color) 13%, transparent);
+    white-space: nowrap;
+
+    &[data-tono="ok"] { --color: var(--ok); }
+    &[data-tono="aviso"] { --color: var(--aviso); }
+    &[data-tono="peligro"] { --color: var(--peligro); }
+    &[data-tono="marca"] { --color: var(--marca); }
+    & svg { inline-size: 0.85rem; block-size: 0.85rem; }
+  }
+
+  .bateria {
+    --nivel: 0%;
+    --color: var(--ok);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta-suave);
+
+    &::before {
+      content: "";
+      inline-size: 1.4rem;
+      block-size: 0.65rem;
+      border-radius: 3px;
+      border: 1.5px solid color-mix(in oklab, var(--tinta) 35%, transparent);
+      background: linear-gradient(to right, var(--color) var(--nivel), transparent 0) content-box;
+      padding: 1px;
+    }
+
+    &[data-tono="aviso"] { --color: var(--aviso); }
+    &[data-tono="peligro"] { --color: var(--peligro); color: var(--peligro); }
+  }
+
+  /* ---------------- Avisos ---------------- */
+  .aviso {
+    --color: var(--marca);
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--radio-chico);
+    background: color-mix(in oklab, var(--color) 10%, var(--superficie));
+    border: 1px solid color-mix(in oklab, var(--color) 30%, transparent);
+    font-size: 0.875rem;
+
+    &[data-tipo="error"] { --color: var(--peligro); }
+    &[data-tipo="exito"] { --color: var(--ok); }
+    &[data-tipo="alerta"] { --color: var(--aviso); }
+    & > svg { color: var(--color); inline-size: 1.15rem; block-size: 1.15rem; flex: none; margin-block-start: 0.1rem; }
+  }
+
+  .cargando {
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    padding: 2.5rem 1rem;
+    color: var(--tinta-suave);
+    font-size: 0.875rem;
+  }
+
+  .giro {
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    border-radius: 50%;
+    border: 2.5px solid var(--marca-suave);
+    border-block-start-color: var(--marca);
+    animation: girar 0.8s linear infinite;
+    --animation-reduced: girar 2.4s linear infinite;
+  }
+
+  @keyframes girar { to { rotate: 1turn; } }
+
+  /* ---------------- Diálogos ---------------- */
+  dialog.dialogo {
+    inline-size: min(30rem, calc(100vw - 2rem));
+    padding: 0;
+    border: 1px solid var(--linea);
+    border-radius: calc(var(--radio) + 4px);
+    background: var(--superficie);
+    color: var(--tinta);
+    box-shadow: var(--sombra-alta);
+    opacity: 0;
+    translate: 0 0.75rem;
+    transition: opacity 0.18s, translate 0.18s, overlay 0.18s allow-discrete, display 0.18s allow-discrete;
+
+    &[open] { opacity: 1; translate: 0; }
+    @starting-style { &[open] { opacity: 0; translate: 0 0.75rem; } }
+
+    &::backdrop {
+      background: oklch(15% 0.03 255 / 0.45);
+      backdrop-filter: blur(3px);
+    }
+
+    & .dialogo-cuerpo { padding: 1.4rem 1.5rem; display: grid; gap: 1rem; }
+    & h2 { font-size: 1.125rem; }
+    & .acciones { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.9rem 1.5rem; border-block-start: 1px solid var(--linea); background: var(--hundido); }
+  }
+
+  /* ---------------- Tablas ---------------- */
+  .tabla {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+
+    & th {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 1;
+      padding: 0.65rem 0.8rem;
+      text-align: start;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--tinta-suave);
+      background: var(--hundido);
+      border-block-end: 1px solid var(--linea);
+      white-space: nowrap;
+    }
+
+    & td { padding: 0.7rem 0.8rem; border-block-end: 1px solid var(--linea); vertical-align: middle; }
+    & tbody tr { transition: background-color 0.12s; }
+    & tbody tr:hover { background: color-mix(in oklab, var(--marca) 6%, transparent); }
+    & tbody tr[data-clic] { cursor: pointer; }
+    & th button { all: unset; cursor: pointer; display: inline-flex; gap: 0.25rem; align-items: center; }
+    & th button:focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; border-radius: 4px; }
+  }
+
+  /* ---------------- Segmentado ---------------- */
+  .segmentado {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: calc(var(--radio-chico) + 3px);
+    background: var(--hundido);
+    border: 1px solid var(--linea);
+
+    & button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 0.3rem 0.7rem;
+      border-radius: var(--radio-chico);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--tinta-suave);
+      cursor: pointer;
+      display: inline-flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
+    & button[aria-pressed="true"] { background: var(--superficie); color: var(--tinta); box-shadow: var(--sombra); }
+    & button svg { inline-size: 0.95rem; block-size: 0.95rem; }
+  }
+}
+
+@layer utilidades {
+  .visualmente-oculto {
+    position: absolute !important;
+    inline-size: 1px; block-size: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+
+  .suave { color: var(--tinta-suave); }
+  .chico { font-size: 0.8125rem; }
+}
+
+@property --animation-reduced {
+  syntax: "*";
+  inherits: false;
+  initial-value: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: var(--animation-reduced) !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

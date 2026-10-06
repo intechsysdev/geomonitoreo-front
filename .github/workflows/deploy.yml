@@ -1,0 +1,39 @@
+# Despliegue al Static Web App. No corre hasta que el repositorio tenga la variable GEO_API_URL
+# (URL pública de geomonitoreo-api) y el secreto AZURE_STATIC_WEB_APPS_API_TOKEN del recurso.
+
+name: Desplegar geomonitoreo-front
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    if: vars.GEO_API_URL != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # En el Static Web App no hay proxy: el front llama al API por su URL absoluta.
+      - name: Compilar
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ vars.GEO_API_URL }}
+
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+          output_location: ""
