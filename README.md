@@ -2,7 +2,9 @@
 
 Consola de **Geomonitoreo**: la flota de MobiControl en un mapa vectorial, en vivo.
 
-React 19 · Vite · TypeScript · MapLibre GL (estilos vectoriales de CARTO, satélite de Esri) · TanStack Query.
+React 19 · Vite · TypeScript · Google Maps JavaScript API (marcadores avanzados, Places para buscar direcciones) · TanStack Query.
+
+La key de Google Maps es de cada empresa: variable `GOOGLE_MAPS_API_KEY` de Geomonitoreo en Intechsys One (y `GOOGLE_MAPS_MAP_ID`, opcional). Necesita Maps JavaScript API, Places API (New) y Geocoding API, restringida por dominio a la consola.
 
 ## Pantallas
 

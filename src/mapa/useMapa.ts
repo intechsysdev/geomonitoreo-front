@@ -1,66 +1,76 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { Map as MapaLibre, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
-import urlWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+import { useConfiguracion } from "../api/consultas";
 import { useTema } from "../tema/Tema";
-import { CENTRO_INICIAL, estiloDe, type FondoMapa } from "./estilos";
-
-// MapLibre arma la ruta de su worker relativa a su propio archivo, y el empaquetado la rompe (el
-// worker no se copia y el mapa queda en blanco). Vite lo empaqueta aparte y aquí se le da la ruta.
-setWorkerUrl(urlWorker);
+import { CENTRO_INICIAL, MAP_ID_DEMO, tipoDe, type FondoMapa } from "./estilos";
+import { alRechazarKey, cargarGoogleMaps, librerias } from "./google";
 
 /**
- * Crea el mapa en el contenedor y le cambia el fondo cuando cambia el tema o la elección del
- * usuario.
+ * Crea el mapa de Google en el contenedor con la key de la empresa (variable GOOGLE_MAPS_API_KEY
+ * de Geomonitoreo en One).
  *
- * Cambiar el estilo borra las fuentes y capas propias (equipos, geocercas, recorridos). Por eso
- * se devuelve una versión que sube con cada estilo cargado: las pantallas instalan sus capas en
- * un efecto que depende de ella, y quedan puestas otra vez sin que nadie lo recuerde a mano.
+ * El tema claro u oscuro de Google solo se elige al crear el mapa: al cambiar el tema de la
+ * consola el mapa se crea de nuevo, en la misma vista. Las pantallas ponen sus capas en efectos
+ * que dependen de `mapa`, así que quedan puestas otra vez solas.
  */
 export function useMapa(contenedor: RefObject<HTMLDivElement | null>, fondo: FondoMapa) {
   const { oscuro } = useTema();
-  const [mapa, setMapa] = useState<MapaLibre | null>(null);
-  const [version, setVersion] = useState(0);
-  const estiloInicial = useRef({ fondo, oscuro });
+  const configuracion = useConfiguracion();
+  const llaves = configuracion.data?.googleMaps ?? null;
+  const [mapa, setMapa] = useState<google.maps.Map | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const vista = useRef<{ center: google.maps.LatLngLiteral; zoom: number } | null>(null);
+  // El fondo con que se crea un mapa nuevo; los cambios después los aplica el efecto de abajo.
+  const fondoActual = useRef(fondo);
+
+  useEffect(() => alRechazarKey(setError), []);
 
   useEffect(() => {
-    if (!contenedor.current) return;
+    const div = contenedor.current;
+    if (!div || !llaves) return;
 
-    const nuevo = new MapaLibre({
-      container: contenedor.current,
-      style: estiloDe(estiloInicial.current.fondo, estiloInicial.current.oscuro),
-      center: CENTRO_INICIAL,
-      zoom: 11,
-      attributionControl: { compact: true },
-      // Los controles propios van en el panel flotante; estos de MapLibre no combinan con él.
-      dragRotate: false,
-      pitchWithRotate: false,
-    });
+    let vivo = true;
+    let creado: google.maps.Map | null = null;
 
-    nuevo.touchZoomRotate.disableRotation();
-    nuevo.on("style.load", () => setVersion((v) => v + 1));
-    setMapa(nuevo);
+    cargarGoogleMaps(llaves.apiKey)
+      .then(librerias)
+      .then(({ mapas }) => {
+        if (!vivo) return;
+        creado = new mapas.Map(div, {
+          center: vista.current?.center ?? CENTRO_INICIAL,
+          zoom: vista.current?.zoom ?? 11,
+          mapId: llaves.mapId || MAP_ID_DEMO,
+          colorScheme: oscuro ? google.maps.ColorScheme.DARK : google.maps.ColorScheme.LIGHT,
+          mapTypeId: tipoDe(fondoActual.current),
+          // Los controles propios van en el vidrio de la consola; los de Google no combinan.
+          disableDefaultUI: true,
+          gestureHandling: "greedy",
+          clickableIcons: false,
+        });
+        setError(null);
+        setMapa(creado);
+      })
+      .catch((e: Error) => vivo && setError(e.message));
 
     return () => {
-      nuevo.remove();
+      vivo = false;
+      if (creado) {
+        const centro = creado.getCenter();
+        if (centro) vista.current = { center: centro.toJSON(), zoom: creado.getZoom() ?? 11 };
+        google.maps.event.clearInstanceListeners(creado);
+      }
       setMapa(null);
+      div.replaceChildren();
     };
-  }, [contenedor]);
+  }, [contenedor, llaves, oscuro]);
 
   useEffect(() => {
-    if (!mapa) return;
-    const actual = estiloInicial.current;
-    if (actual.fondo === fondo && actual.oscuro === oscuro) return;
+    fondoActual.current = fondo;
+    mapa?.setMapTypeId(tipoDe(fondo));
+  }, [mapa, fondo]);
 
-    estiloInicial.current = { fondo, oscuro };
-    mapa.setStyle(estiloDe(fondo, oscuro));
-  }, [mapa, fondo, oscuro]);
+  let aviso: string | null = error;
+  if (!aviso && configuracion.data && !llaves)
+    aviso = "Falta la key de Google Maps de la empresa: cárguela en Intechsys One, app Geomonitoreo → Variables (GOOGLE_MAPS_API_KEY).";
 
-  return { mapa, version };
+  return { mapa, aviso };
 }
-
-/** Pone los datos en una fuente GeoJSON, si ya existe (puede estar reinstalándose). */
-export function ponerDatos(mapa: MapaLibre | null, fuente: string, datos: GeoJSON.GeoJSON) {
-  (mapa?.getSource(fuente) as GeoJSONSource | undefined)?.setData(datos);
-}
-
-export const VACIO: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };

@@ -1,4 +1,3 @@
-import type { Feature, Polygon } from "geojson";
 import type { Geocerca } from "../api/geocercas";
 
 const RADIO_TIERRA = 6_371_008.8;
@@ -29,15 +28,6 @@ export function anilloCirculo(centro: [number, number], radioMetros: number, lad
 export function poligonoDe(g: Pick<Geocerca, "tipo" | "latitud" | "longitud" | "radioMetros" | "vertices">): [number, number][] {
   if (g.tipo === "CIRCULO") return anilloCirculo([g.longitud, g.latitud], g.radioMetros ?? 0);
   return g.vertices.length ? [...g.vertices, g.vertices[0]] : [];
-}
-
-export function geocercaComoFeature(g: Geocerca): Feature<Polygon> {
-  return {
-    type: "Feature",
-    id: g.geocercaUid,
-    properties: { uid: g.geocercaUid, nombre: g.nombre, color: g.color, activa: g.activa },
-    geometry: { type: "Polygon", coordinates: [poligonoDe(g)] },
-  };
 }
 
 /** Caja que encierra una lista de puntos [lng, lat], o null si no hay ninguno. */

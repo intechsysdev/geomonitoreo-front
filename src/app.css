@@ -159,7 +159,6 @@
 
   .mapa { position: absolute; inset: 0; }
 
-  .maplibregl-ctrl-attrib { font-size: 0.6875rem; }
 
   .panel-flota {
     position: absolute;
@@ -344,6 +343,8 @@
     border: 3px solid white;
     box-shadow: 0 0 0 0 color-mix(in oklab, var(--color) 60%, transparent), 0 4px 12px rgb(0 0 0 / 0.35);
     animation: pulso 1.8s ease-out infinite;
+    /* Google ancla el marcador por abajo al centro: se baja medio alto para centrarlo en el punto. */
+    translate: 0 50%;
     --animation-reduced: none;
 
     &[data-estado="en-linea"] { --color: #22c55e; }
@@ -558,6 +559,7 @@
     block-size: 20px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #67e8f9, #0e7490);
+    translate: 0 50%;
     border: 3px solid white;
     box-shadow: 0 0 0 6px rgb(14 116 144 / 0.25), 0 4px 10px rgb(0 0 0 / 0.35);
   }
@@ -787,6 +789,212 @@
   /* =======================================================================================
      Pantallas angostas: el riel baja, el panel se vuelve una hoja inferior.
      ======================================================================================= */
+  /* =======================================================================================
+     Google Maps: lo que se dibuja como marcador (HTML propio) y el aviso cuando no hay mapa.
+     ======================================================================================= */
+  .aviso-mapa {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 2rem 2rem 2rem calc(min(25rem, 100%) + 3rem);
+    text-align: center;
+    color: var(--tinta-suave);
+    background: var(--hundido);
+
+    & svg { inline-size: 2.5rem; block-size: 2.5rem; color: var(--marca); }
+    & p { max-inline-size: 34rem; text-wrap: balance; }
+  }
+
+  /* Equipo: punto del color de su estado, con halo; su nombre solo de cerca. */
+  .equipo-punto {
+    --color: #94a3b8;
+    position: relative;
+    inline-size: 13px;
+    block-size: 13px;
+    border-radius: 50%;
+    background: var(--color);
+    border: 2.5px solid var(--superficie);
+    box-shadow: 0 0 0 7px color-mix(in oklab, var(--color) 24%, transparent), 0 2px 6px rgb(0 0 0 / 0.3);
+    translate: 0 50%;
+
+    &[data-estado="en-linea"] { --color: #22c55e; }
+    &[data-estado="sin-senal"] { --color: #ef4444; }
+  }
+
+  .equipo-nombre {
+    position: absolute;
+    inset-block-start: calc(100% + 6px);
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tinta);
+    text-shadow: 0 0 3px var(--superficie), 0 0 3px var(--superficie), 0 0 2px var(--superficie);
+    pointer-events: none;
+  }
+  .mapa:not([data-nombres="true"]) .equipo-nombre { display: none; }
+
+  /* Grupo de equipos: del gris (ninguno en línea) al verde (todos). */
+  .grupo-equipos {
+    display: grid;
+    place-items: center;
+    inline-size: var(--tamano, 34px);
+    block-size: var(--tamano, 34px);
+    border-radius: 50%;
+    background: color-mix(in oklab, #16a34a calc(var(--proporcion, 0) * 100%), #64748b);
+    color: white;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 5px color-mix(in oklab, var(--marca) 25%, transparent), 0 3px 10px rgb(0 0 0 / 0.3);
+    translate: 0 50%;
+    cursor: pointer;
+  }
+
+  .etiqueta-zona {
+    --color: var(--marca);
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--color);
+    text-shadow: 0 0 3px var(--superficie), 0 0 3px var(--superficie), 0 0 2px var(--superficie);
+    translate: 0 50%;
+    pointer-events: none;
+  }
+
+  /* Hitos del recorrido. */
+  .hito-mapa {
+    display: grid;
+    place-items: center;
+    inline-size: 16px;
+    block-size: 16px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+    translate: 0 50%;
+    color: white;
+    font-size: 0.5625rem;
+    font-weight: 800;
+
+    &[data-tipo="inicio"] { background: #16a34a; }
+    &[data-tipo="fin"] { background: #0f172a; }
+    &[data-tipo="parada"] { inline-size: 20px; block-size: 20px; border-width: 2.5px; background: #7c3aed; }
+    &[data-tipo="entrada"], &[data-tipo="salida"] { inline-size: 11px; block-size: 11px; border-width: 2px; }
+    &[data-tipo="entrada"] { background: #16a34a; }
+    &[data-tipo="salida"] { background: #ea580c; }
+  }
+
+  /* Vértice del borrador: no recibe clics, para que el clic llegue al mapa y ponga otro. */
+  .vertice {
+    inline-size: 11px;
+    block-size: 11px;
+    border-radius: 50%;
+    background: white;
+    border: 2.5px solid #0ea5e9;
+    translate: 0 50%;
+    pointer-events: none;
+  }
+
+  /* Lugar encontrado por el buscador. */
+  .lugar-pin {
+    inline-size: 26px;
+    block-size: 26px;
+    border-radius: 50% 50% 50% 0;
+    rotate: -45deg;
+    background: var(--marca);
+    border: 3px solid white;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+    pointer-events: none;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      background: white;
+    }
+  }
+
+  /* =======================================================================================
+     Buscador de direcciones: arriba del mapa, a la derecha del panel.
+     ======================================================================================= */
+  .buscador-mapa {
+    position: absolute;
+    z-index: 4;
+    inset-block-start: var(--separacion);
+    inset-inline-start: calc(min(25rem, 100%) + var(--separacion) * 2);
+    inline-size: min(27rem, calc(100% - min(25rem, 100%) - var(--separacion) * 3 - 19rem));
+    min-inline-size: 15rem;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .buscador-caja {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.35rem 0.3rem 0.8rem;
+
+    & > svg { inline-size: 1.1rem; block-size: 1.1rem; flex: none; color: var(--tinta-suave); }
+    & .campo { flex: 1; border: 0; background: transparent; box-shadow: none; padding-inline: 0.25rem; }
+    & .campo::-webkit-search-cancel-button { display: none; }
+  }
+
+  .sugerencias {
+    margin: 0;
+    padding: 0.35rem;
+    list-style: none;
+    max-block-size: min(22rem, 50dvh);
+    overflow-y: auto;
+
+    &[hidden] { display: none; }
+  }
+
+  .sugerencia {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radio-chico);
+    cursor: pointer;
+
+    & > svg { inline-size: 1rem; block-size: 1rem; flex: none; color: var(--tinta-suave); }
+    &[aria-selected="true"] { background: var(--marca-suave); }
+    &[aria-selected="true"] > svg { color: var(--marca); }
+  }
+
+  .sugerencia-vacia { padding: 0.5rem 0.6rem; }
+
+  .buscador-error { margin: 0; padding: 0.6rem 0.8rem; color: var(--peligro); font-size: 0.8125rem; }
+
+  .lugar-tarjeta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.35rem 0.65rem;
+    padding: 0.75rem 0.85rem;
+
+    & .lugar-icono { inline-size: 1.15rem; block-size: 1.15rem; color: var(--marca); margin-block-start: 0.1rem; }
+    & .lugar-texto { display: grid; gap: 0.1rem; min-inline-size: 0; }
+    & .lugar-texto > * { overflow-wrap: anywhere; }
+    & .lugar-acciones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  }
+
+  .equipos-cerca {
+    inline-size: 100%;
+    display: grid;
+    gap: 0.25rem;
+
+    & ul { margin: 0; padding: 0; list-style: none; display: grid; }
+  }
+
+  .item-equipo.compacto {
+    padding-block: 0.35rem;
+    & .item-nombre { flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+
   @media (width < 760px) {
     .marco { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
     .riel {
@@ -810,6 +1018,8 @@
     }
     .detalle-equipo { inset: var(--separacion); inline-size: auto; }
     .barra-dibujo { inset-inline: var(--separacion); }
+    .buscador-mapa { inset-block-start: calc(var(--separacion) + 3.25rem); inset-inline: var(--separacion); inline-size: auto; min-inline-size: 0; }
+    .aviso-mapa { padding: 2rem 1.5rem 55dvh; }
     .barra-superior { inset-inline: var(--separacion) auto; }
     .mapa-esquina { inset-block: 4rem auto; flex-direction: column; align-items: flex-end; }
     .controles-mapa { flex-direction: column; }

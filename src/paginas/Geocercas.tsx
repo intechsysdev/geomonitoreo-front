@@ -1,19 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { LngLatBoundsLike, MapLayerMouseEvent, MapMouseEvent } from "maplibre-gl";
-import type { FeatureCollection } from "geojson";
 import { CloudOff, Circle, Hexagon, Pencil, Plus, RefreshCw, Trash2, Undo2, X } from "lucide-react";
 import {
   actualizarGeocerca, crearGeocerca, eliminarGeocerca, type Geocerca, type GeocercaCambio, type TipoGeocerca,
 } from "../api/geocercas";
 import { useEmpresaClave, useFlota, useListaGeocercas } from "../api/consultas";
 import { Aviso, Cargando, Dialogo } from "../componentes/Basicos";
-import { ControlesMapa } from "../mapa/ControlesMapa";
-import { flotaComoGeoJson, geocercasComoGeoJson, instalarCapasFlota, instalarCapasGeocercas } from "../mapa/capasFlota";
-import { anilloCirculo, caja, distancia, poligonoDe } from "../mapa/geo";
+import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
+import { BuscadorDirecciones, type Lugar } from "../mapa/BuscadorDirecciones";
+import { aLatLng, CapaFlota, CapaGeocercas, elemento, encuadrar, marcador, type Margen } from "../mapa/capas";
+import { anilloCirculo, distancia, poligonoDe } from "../mapa/geo";
 import type { FondoMapa } from "../mapa/estilos";
-import { ponerDatos, useMapa, VACIO } from "../mapa/useMapa";
-import { useTema } from "../tema/Tema";
+import { useMapa } from "../mapa/useMapa";
+
+/** Lo que tapa el panel de la izquierda. */
+const MARGEN: Margen = { top: 80, bottom: 80, left: 440, right: 80 };
+
+/** Radio con que arranca un círculo creado desde una dirección buscada. */
+const RADIO_DESDE_LUGAR = 200;
+
+/** Línea punteada del borrador: los trazos de Google no tienen guiones, se arman con símbolos. */
+const GUIONES: google.maps.IconSequence[] = [
+  { icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: "#0ea5e9", strokeWeight: 2.5, scale: 3 }, offset: "0", repeat: "12px" },
+];
 
 const COLORES = ["#0ea5e9", "#22c55e", "#eab308", "#f97316", "#ef4444", "#a855f7", "#ec4899", "#14b8a6"];
 
@@ -52,9 +61,8 @@ const formularioDe = (g: Geocerca): Formulario => ({
 
 export function Geocercas() {
   const contenedor = useRef<HTMLDivElement>(null);
-  const [fondo, setFondo] = useState<FondoMapa>("auto");
-  const { oscuro } = useTema();
-  const { mapa, version } = useMapa(contenedor, fondo);
+  const [fondo, setFondo] = useState<FondoMapa>("mapa");
+  const { mapa, aviso } = useMapa(contenedor, fondo);
   const empresa = useEmpresaClave();
   const queryClient = useQueryClient();
 
@@ -76,59 +84,76 @@ export function Geocercas() {
   }, [flota.data]);
 
   // ---- Capas ----
-  useEffect(() => {
-    if (!mapa || version === 0) return;
-    instalarCapasGeocercas(mapa, 0.16);
-    instalarCapasFlota(mapa, oscuro);
-
-    if (!mapa.getSource("borrador")) {
-      mapa.addSource("borrador", { type: "geojson", data: VACIO });
-      mapa.addLayer({ id: "borrador-relleno", type: "fill", source: "borrador", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#0ea5e9", "fill-opacity": 0.18 } });
-      mapa.addLayer({ id: "borrador-borde", type: "line", source: "borrador", filter: ["!=", ["geometry-type"], "Point"], paint: { "line-color": "#0ea5e9", "line-width": 2.5, "line-dasharray": [2, 1.5] } });
-      mapa.addLayer({ id: "borrador-vertices", type: "circle", source: "borrador", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": "#fff", "circle-stroke-color": "#0ea5e9", "circle-stroke-width": 2.5 } });
-    }
-  }, [mapa, version, oscuro]);
+  const [capas, setCapas] = useState<{
+    zonas: CapaGeocercas;
+    flota: CapaFlota;
+    relleno: google.maps.Polygon;
+    contorno: google.maps.Polyline;
+  } | null>(null);
 
   useEffect(() => {
-    if (version === 0) return;
-    ponerDatos(mapa, "geocercas", geocercasComoGeoJson(lista));
-  }, [mapa, version, lista]);
+    if (!mapa) return;
+    const zonas = new CapaGeocercas(mapa, { opacidad: 0.16, alElegir: setElegida });
+    const flota = new CapaFlota(mapa);
+    // El borrador: relleno tenue y contorno punteado, sin recibir clics (los clics son para dibujar).
+    const relleno = new google.maps.Polygon({ map: mapa, clickable: false, fillColor: "#0ea5e9", fillOpacity: 0.18, strokeOpacity: 0, zIndex: 20 });
+    const contorno = new google.maps.Polyline({ map: mapa, clickable: false, strokeOpacity: 0, icons: GUIONES, zIndex: 21 });
+    setCapas({ zonas, flota, relleno, contorno });
+    return () => {
+      zonas.quitar();
+      flota.quitar();
+      relleno.setMap(null);
+      contorno.setMap(null);
+      setCapas(null);
+    };
+  }, [mapa]);
 
   useEffect(() => {
-    if (version === 0) return;
-    ponerDatos(mapa, "flota", flotaComoGeoJson(flota.data?.equipos ?? []));
-  }, [mapa, version, flota.data]);
+    capas?.zonas.poner(lista);
+  }, [capas, lista]);
+
+  useEffect(() => {
+    capas?.flota.poner(flota.data?.equipos ?? []);
+  }, [capas, flota.data]);
 
   // Resalta la elegida.
-  const anterior = useRef<string | null>(null);
   useEffect(() => {
-    if (!mapa || version === 0 || !mapa.getSource("geocercas")) return;
-    if (anterior.current) mapa.setFeatureState({ source: "geocercas", id: anterior.current }, { resaltada: false });
-    if (elegida) mapa.setFeatureState({ source: "geocercas", id: elegida }, { resaltada: true });
-    anterior.current = elegida;
-  }, [mapa, version, elegida, lista]);
+    capas?.zonas.resaltar(elegida);
+  }, [capas, elegida, lista]);
 
   // Dibujo del borrador.
   useEffect(() => {
-    if (version === 0) return;
-    const datos: FeatureCollection = { type: "FeatureCollection", features: [] };
+    if (!capas) return;
+    let area: [number, number][] = [];
+    let linea: [number, number][] = [];
 
     if (borrador?.tipo === "CIRCULO" && borrador.puntos.length === 1) {
       const centro = borrador.puntos[0];
       const radio = borrador.radio ?? (cursor ? distancia(centro, cursor) : 0);
-      if (radio > 0) datos.features.push({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [anilloCirculo(centro, radio)] } });
-      datos.features.push({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: centro } });
+      if (radio > 0) area = linea = anilloCirculo(centro, radio);
     }
 
     if (borrador?.tipo === "POLIGONO" && borrador.puntos.length) {
       const anillo = cursor ? [...borrador.puntos, cursor] : borrador.puntos;
-      if (anillo.length >= 3) datos.features.push({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[...anillo, anillo[0]]] } });
-      else datos.features.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: anillo } });
-      for (const p of borrador.puntos) datos.features.push({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: p } });
+      if (anillo.length >= 3) {
+        area = anillo;
+        linea = [...anillo, anillo[0]];
+      } else {
+        linea = anillo;
+      }
     }
 
-    ponerDatos(mapa, "borrador", datos);
-  }, [mapa, version, borrador, cursor]);
+    capas.relleno.setPaths(area.map(aLatLng));
+    capas.contorno.setPath(linea.map(aLatLng));
+  }, [capas, borrador, cursor]);
+
+  // Los vértices puestos (o el centro del círculo).
+  const puntosBorrador = borrador?.puntos;
+  useEffect(() => {
+    if (!mapa || !puntosBorrador?.length) return;
+    const vertices = puntosBorrador.map((p) => marcador(mapa, p, elemento("vertice"), { zIndex: 25 }));
+    return () => vertices.forEach((v) => { v.map = null; });
+  }, [mapa, puntosBorrador]);
 
   // ---- Interacción de dibujo ----
   const terminarPoligono = useCallback(() => {
@@ -164,38 +189,41 @@ export function Geocercas() {
   useEffect(() => {
     if (!mapa || !borrador) return;
 
-    mapa.getCanvas().style.cursor = "crosshair";
-    mapa.doubleClickZoom.disable();
+    mapa.setOptions({ draggableCursor: "crosshair", disableDoubleClickZoom: true });
+    capas?.zonas.permitirClics(false);
 
-    const clic = (e: MapMouseEvent) => {
-      const punto: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+    const aPunto = (e: google.maps.MapMouseEvent): [number, number] | null =>
+      e.latLng ? [e.latLng.lng(), e.latLng.lat()] : null;
+
+    const clic = mapa.addListener("click", (e: google.maps.MapMouseEvent) => {
+      const punto = aPunto(e);
+      if (!punto) return;
       if (borrador.tipo === "CIRCULO") {
         if (borrador.puntos.length === 0) setBorrador({ ...borrador, puntos: [punto] });
         else abrirFormularioDesdeBorrador(borrador.puntos, Math.max(10, distancia(borrador.puntos[0], punto)));
       } else {
         setBorrador({ ...borrador, puntos: [...borrador.puntos, punto] });
       }
-    };
+    });
 
-    const mover = (e: MapMouseEvent) => setCursor([e.lngLat.lng, e.lngLat.lat]);
-    const doble = (e: MapMouseEvent) => {
-      e.preventDefault();
+    const mover = mapa.addListener("mousemove", (e: google.maps.MapMouseEvent) => {
+      const punto = aPunto(e);
+      if (punto) setCursor(punto);
+    });
+    const doble = mapa.addListener("dblclick", (e: google.maps.MapMouseEvent) => {
+      e.stop();
       terminarPoligono();
-    };
-
-    mapa.on("click", clic);
-    mapa.on("mousemove", mover);
-    mapa.on("dblclick", doble);
+    });
 
     return () => {
-      mapa.off("click", clic);
-      mapa.off("mousemove", mover);
-      mapa.off("dblclick", doble);
-      mapa.getCanvas().style.cursor = "";
-      mapa.doubleClickZoom.enable();
+      clic.remove();
+      mover.remove();
+      doble.remove();
+      mapa.setOptions({ draggableCursor: null, disableDoubleClickZoom: false });
+      capas?.zonas.permitirClics(true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapa, borrador, terminarPoligono]);
+  }, [mapa, capas, borrador, terminarPoligono]);
 
   useEffect(() => {
     if (!borrador) return;
@@ -207,21 +235,26 @@ export function Geocercas() {
     return () => window.removeEventListener("keydown", tecla);
   }, [borrador, terminarPoligono]);
 
-  // Clic en una zona (sin estar dibujando): elegirla.
-  useEffect(() => {
-    if (!mapa || version === 0 || borrador) return;
-    const clic = (e: MapLayerMouseEvent) => {
-      const uid = e.features?.[0]?.properties.uid as string | undefined;
-      if (uid) setElegida(uid);
-    };
-    mapa.on("click", "geocercas-relleno", clic);
-    return () => { mapa.off("click", "geocercas-relleno", clic); };
-  }, [mapa, version, borrador]);
-
   const enfocar = useCallback((g: Geocerca) => {
-    const limites = caja(poligonoDe(g));
-    if (mapa && limites) mapa.fitBounds(limites as LngLatBoundsLike, { padding: { top: 80, bottom: 80, left: 440, right: 80 }, maxZoom: 17, duration: 800 });
+    if (mapa) encuadrar(mapa, poligonoDe(g), MARGEN, 17);
   }, [mapa]);
+
+  /** Desde una dirección buscada: un círculo alrededor, listo para nombrar y ajustar el radio. */
+  const circuloEn = (lugar: Lugar) => {
+    setElegida(null);
+    setError(null);
+    setFormulario({
+      uid: null,
+      nombre: lugar.nombre === "Coordenadas" ? "" : lugar.nombre.slice(0, 100),
+      descripcion: lugar.direccion.slice(0, 500),
+      color: COLORES[lista.length % COLORES.length],
+      activa: true,
+      tipo: "CIRCULO",
+      centro: lugar.posicion,
+      radio: RADIO_DESDE_LUGAR,
+      vertices: [],
+    });
+  };
 
   // ---- Guardado ----
   const guardar = useMutation({
@@ -281,6 +314,25 @@ export function Geocercas() {
   return (
     <div className="pantalla-mapa">
       <div ref={contenedor} className="mapa" />
+      <AvisoMapa texto={aviso} />
+
+      {/* Mientras se dibuja, en su lugar va la barra de dibujo; el pin del lugar sigue en el mapa. */}
+      <div hidden={!!borrador}>
+        <BuscadorDirecciones
+          mapa={mapa}
+          margen={MARGEN}
+          acciones={(lugar) => (
+            <>
+              <button type="button" className="boton chico primario" onClick={() => circuloEn(lugar)}>
+                <Circle aria-hidden /> Círculo aquí
+              </button>
+              <button type="button" className="boton chico" onClick={() => empezar("POLIGONO")}>
+                <Hexagon aria-hidden /> Polígono aquí
+              </button>
+            </>
+          )}
+        />
+      </div>
 
       <aside className="panel-flota vidrio" aria-label="Geocercas">
         <div className="panel-cabeza">

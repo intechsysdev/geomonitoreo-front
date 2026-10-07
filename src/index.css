@@ -1,8 +1,5 @@
 @layer reset, terceros, base, tema, componentes, utilidades;
 
-/* El CSS de MapLibre va en su propia capa: sin capa le ganaría a todo lo nuestro (le quitaba al
-   contenedor del mapa el position: absolute y el mapa quedaba de alto cero). */
-@import "maplibre-gl/dist/maplibre-gl.css" layer(terceros);
 
 /* =========================================================================================
    Tokens. Primero los literales; después los semánticos, que resuelven claro/oscuro con

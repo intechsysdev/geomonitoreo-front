@@ -82,6 +82,8 @@ export interface Recorrido {
 export interface ConfiguracionFlota {
   mobiControlConfigurado: boolean;
   empresa: string | null;
+  /** Key de Google Maps de la empresa en One (GOOGLE_MAPS_API_KEY). Null si no la tiene. */
+  googleMaps: { apiKey: string; mapId: string | null } | null;
 }
 
 export const obtenerConfiguracion = () => obtenerJson<ConfiguracionFlota>("/api/v1/flota/configuracion");

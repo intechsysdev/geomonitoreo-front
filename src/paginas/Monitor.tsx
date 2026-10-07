@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Marker, type LngLatBoundsLike } from "maplibre-gl";
 import {
   BatteryWarning, Copy, Crosshair, ExternalLink, MapPinOff, RefreshCw, Route, Search, Signal, SignalZero, Wifi, X,
 } from "lucide-react";
 import { localizarEquipo, obtenerEquipo, obtenerFlota, type Equipo } from "../api/flota";
 import { useConfiguracion, useEmpresaClave, useFlota, useGeocercas } from "../api/consultas";
 import { Aviso, Bateria, Cargando, PuntoEstado } from "../componentes/Basicos";
-import { ControlesMapa } from "../mapa/ControlesMapa";
-import { conectarClicsFlota, flotaComoGeoJson, geocercasComoGeoJson, instalarCapasFlota, instalarCapasGeocercas } from "../mapa/capasFlota";
-import { caja } from "../mapa/geo";
+import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
+import { BuscadorDirecciones, type Lugar } from "../mapa/BuscadorDirecciones";
+import { CapaFlota, CapaGeocercas, elemento, encuadrar as encuadrarMapa, irA, marcador, type Margen } from "../mapa/capas";
+import { distancia } from "../mapa/geo";
 import type { FondoMapa } from "../mapa/estilos";
-import { ponerDatos, useMapa } from "../mapa/useMapa";
-import { useTema } from "../tema/Tema";
+import { useMapa } from "../mapa/useMapa";
 import {
   bateriaBaja, coordenadas, estadoDe, formatoFechaHora, grupoCorto, haceCuanto, NOMBRE_ESTADO, type EstadoEquipo,
 } from "../formato";
@@ -50,9 +49,8 @@ function useAhora(cadaMs = 15_000) {
 
 export function Monitor() {
   const contenedor = useRef<HTMLDivElement>(null);
-  const [fondo, setFondo] = useState<FondoMapa>("auto");
-  const { oscuro } = useTema();
-  const { mapa, version } = useMapa(contenedor, fondo);
+  const [fondo, setFondo] = useState<FondoMapa>("mapa");
+  const { mapa, aviso } = useMapa(contenedor, fondo);
   const [params, setParams] = useSearchParams();
   const seleccionado = params.get("equipo");
   const [filtro, setFiltro] = useState<Filtro>("todos");
@@ -81,31 +79,34 @@ export function Monitor() {
   );
 
   // ---- Capas ----
-  useEffect(() => {
-    if (!mapa || version === 0) return;
-    instalarCapasGeocercas(mapa);
-    instalarCapasFlota(mapa, oscuro);
-    return conectarClicsFlota(mapa, (id) => elegir(id));
-  }, [mapa, version, oscuro, elegir]);
+  const [capas, setCapas] = useState<{ flota: CapaFlota; zonas: CapaGeocercas } | null>(null);
 
   useEffect(() => {
-    if (version === 0) return;
-    ponerDatos(mapa, "flota", flotaComoGeoJson(equipos));
-  }, [mapa, version, equipos]);
+    if (!mapa) return;
+    const zonas = new CapaGeocercas(mapa, { opacidad: 0.12 });
+    const flota = new CapaFlota(mapa, (id) => elegir(id));
+    setCapas({ flota, zonas });
+    return () => {
+      zonas.quitar();
+      flota.quitar();
+      setCapas(null);
+    };
+  }, [mapa, elegir]);
 
   useEffect(() => {
-    if (version === 0) return;
+    capas?.flota.poner(equipos);
+  }, [capas, equipos]);
+
+  useEffect(() => {
     const activas = (geocercas.data ?? []).filter((g) => g.activa);
-    ponerDatos(mapa, "geocercas", geocercasComoGeoJson(verZonas ? activas : []));
-  }, [mapa, version, geocercas.data, verZonas]);
+    capas?.zonas.poner(verZonas ? activas : []);
+  }, [capas, geocercas.data, verZonas]);
 
   // ---- Encuadre: la primera vez que llegan equipos, que se vean todos ----
   const encuadrado = useRef(false);
   const encuadrar = useCallback(() => {
     const puntos = equipos.filter((e) => e.latitud !== null).map((e) => [e.longitud!, e.latitud!] as [number, number]);
-    const limites = caja(puntos);
-    if (!mapa || !limites) return;
-    mapa.fitBounds(limites as LngLatBoundsLike, { padding: { top: 80, bottom: 60, left: 420, right: 80 }, maxZoom: 14, duration: 900 });
+    if (mapa) encuadrarMapa(mapa, puntos, MARGEN, 14);
   }, [mapa, equipos]);
 
   useEffect(() => {
@@ -116,26 +117,22 @@ export function Monitor() {
 
   // ---- Equipo elegido: centrarlo y marcarlo con un pulso ----
   const elegido = equipos.find((e) => e.deviceId === seleccionado) ?? null;
-  const marcador = useRef<Marker | null>(null);
+  const latElegido = elegido?.latitud ?? null;
+  const lngElegido = elegido?.longitud ?? null;
+  const estadoElegido = elegido ? estadoDe(elegido) : null;
 
   useEffect(() => {
-    marcador.current?.remove();
-    marcador.current = null;
-    if (!mapa || !elegido || elegido.latitud === null) return;
-
-    const elemento = document.createElement("div");
-    elemento.className = "pulso";
-    elemento.dataset.estado = estadoDe(elegido);
-    marcador.current = new Marker({ element: elemento }).setLngLat([elegido.longitud!, elegido.latitud!]).addTo(mapa);
-
-    return () => { marcador.current?.remove(); };
-  }, [mapa, elegido]);
+    if (!mapa || latElegido === null || lngElegido === null || !estadoElegido) return;
+    const pulso = marcador(mapa, [lngElegido, latElegido], elemento("pulso", undefined, { estado: estadoElegido }), { zIndex: 2000 });
+    return () => { pulso.map = null; };
+  }, [mapa, latElegido, lngElegido, estadoElegido]);
 
   const ultimoCentrado = useRef<string | null>(null);
   useEffect(() => {
     if (!mapa || !elegido || elegido.latitud === null || ultimoCentrado.current === elegido.deviceId) return;
     ultimoCentrado.current = elegido.deviceId;
-    mapa.flyTo({ center: [elegido.longitud!, elegido.latitud!], zoom: Math.max(mapa.getZoom(), 15), offset: [-180, 0], duration: 1100 });
+    // A la izquierda del centro: a la derecha va el cajón del detalle.
+    irA(mapa, [elegido.longitud!, elegido.latitud!], Math.max(mapa.getZoom() ?? 0, 15), 180);
   }, [mapa, elegido]);
 
   // ---- Lista ----
@@ -176,6 +173,13 @@ export function Monitor() {
   return (
     <div className="pantalla-mapa">
       <div ref={contenedor} className="mapa" />
+      <AvisoMapa texto={aviso} />
+
+      <BuscadorDirecciones
+        mapa={mapa}
+        margen={MARGEN}
+        acciones={(lugar) => <EquiposCerca lugar={lugar} equipos={equipos} alElegir={elegir} />}
+      />
 
       <aside className="panel-flota vidrio" aria-label="Flota">
         <div className="panel-cabeza">
@@ -277,6 +281,41 @@ export function Monitor() {
         </label>
         <ControlesMapa mapa={mapa} fondo={fondo} alCambiarFondo={setFondo} alEncuadrar={encuadrar} />
       </div>
+    </div>
+  );
+}
+
+/** Lo que tapan el panel de la flota (izquierda) y los controles: el encuadre no los usa. */
+const MARGEN: Margen = { top: 80, bottom: 60, left: 420, right: 80 };
+
+/** Los equipos más cerca de un lugar buscado, en línea recta. */
+function EquiposCerca({ lugar, equipos, alElegir }: { lugar: Lugar; equipos: Equipo[]; alElegir: (id: string) => void }) {
+  const cerca = useMemo(
+    () =>
+      equipos
+        .filter((e) => e.latitud !== null && e.longitud !== null)
+        .map((e) => ({ e, metros: distancia(lugar.posicion, [e.longitud!, e.latitud!]) }))
+        .sort((a, b) => a.metros - b.metros)
+        .slice(0, 5),
+    [lugar, equipos],
+  );
+
+  if (!cerca.length) return null;
+
+  return (
+    <div className="equipos-cerca">
+      <span className="etiqueta-mini">Equipos más cerca</span>
+      <ul>
+        {cerca.map(({ e, metros }) => (
+          <li key={e.deviceId}>
+            <button type="button" className="item-equipo compacto" onClick={() => alElegir(e.deviceId)}>
+              <PuntoEstado equipo={e} />
+              <span className="item-nombre">{e.nombre}</span>
+              <span className="item-tiempo">{metros < 1000 ? `${Math.round(metros)} m` : `${(metros / 1000).toLocaleString("es-CO", { maximumFractionDigits: 1 })} km`}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

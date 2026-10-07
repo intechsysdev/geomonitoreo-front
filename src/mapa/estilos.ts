@@ -1,50 +1,25 @@
-import type { StyleSpecification } from "maplibre-gl";
-
-export type FondoMapa = "auto" | "calles" | "satelite";
+export type FondoMapa = "mapa" | "satelite" | "relieve";
 
 export const FONDOS: { id: FondoMapa; nombre: string }[] = [
-  { id: "auto", nombre: "Mapa" },
-  { id: "calles", nombre: "Calles" },
+  { id: "mapa", nombre: "Mapa" },
   { id: "satelite", nombre: "Satélite" },
+  { id: "relieve", nombre: "Relieve" },
 ];
 
-/** Fuente que existe en el servidor de CARTO: la usan las etiquetas propias en todos los fondos. */
-export const FUENTE = ["Montserrat Medium", "Open Sans Bold", "Noto Sans Regular"];
-
-const GLIFOS = "https://tiles.basemaps.cartocdn.com/fonts/{fontstack}/{range}.pbf";
-
-/** Imagen satelital de Esri. Raster: no trae glifos, así que se le dan los de CARTO para las etiquetas. */
-const SATELITE: StyleSpecification = {
-  version: 8,
-  glyphs: GLIFOS,
-  sources: {
-    esri: {
-      type: "raster",
-      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution: "Imágenes © Esri, Maxar, Earthstar Geographics",
-    },
-  },
-  layers: [{ id: "esri", type: "raster", source: "esri" }],
-};
-
-/**
- * Estilo del fondo. "Mapa" sigue el tema de la consola: Positron de día, Dark Matter de noche. Son
- * los estilos vectoriales de CARTO, sobrios a propósito para que lo que resalte sean los equipos.
- */
-export function estiloDe(fondo: FondoMapa, oscuro: boolean): string | StyleSpecification {
+/** Satélite va con calles y nombres encima: sin ellos no se sabe dónde se está. */
+export function tipoDe(fondo: FondoMapa): google.maps.MapTypeId | string {
   switch (fondo) {
-    case "satelite":
-      return SATELITE;
-    case "calles":
-      return "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
-    default:
-      return oscuro
-        ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-        : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+    case "satelite": return "hybrid";
+    case "relieve": return "terrain";
+    default: return "roadmap";
   }
 }
 
 /** Cali: donde arranca el mapa antes de saber dónde están los equipos. */
-export const CENTRO_INICIAL: [number, number] = [-76.532, 3.4516];
+export const CENTRO_INICIAL: google.maps.LatLngLiteral = { lat: 3.4516, lng: -76.532 };
+
+/**
+ * Map ID de demostración de Google. Los marcadores avanzados exigen un Map ID; si la empresa no
+ * cargó el suyo en One (GOOGLE_MAPS_MAP_ID), se usa este.
+ */
+export const MAP_ID_DEMO = "DEMO_MAP_ID";

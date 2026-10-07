@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Marker, type LngLatBoundsLike } from "maplibre-gl";
-import type { FeatureCollection } from "geojson";
 import { CircleDot, Clock, Flag, Gauge, LogIn, LogOut, Pause, Play, Route as IconoRuta, Timer, Zap } from "lucide-react";
 import { obtenerRecorrido, type PuntoRecorrido, type Recorrido } from "../api/flota";
 import { useEmpresaClave, useFlota, useGeocercas } from "../api/consultas";
 import { Aviso, Cargando, PuntoEstado } from "../componentes/Basicos";
-import { ControlesMapa } from "../mapa/ControlesMapa";
-import { geocercasComoGeoJson, instalarCapasGeocercas } from "../mapa/capasFlota";
-import { caja } from "../mapa/geo";
-import { FUENTE, type FondoMapa } from "../mapa/estilos";
-import { ponerDatos, useMapa, VACIO } from "../mapa/useMapa";
+import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
+import { BuscadorDirecciones } from "../mapa/BuscadorDirecciones";
+import { aLatLng, CapaGeocercas, elemento, encuadrar as encuadrarMapa, marcador, type Margen } from "../mapa/capas";
+import type { FondoMapa } from "../mapa/estilos";
+import { useMapa } from "../mapa/useMapa";
 import { duracion, formatoFechaHora, formatoHora } from "../formato";
 
 type Rango = "hoy" | "ayer" | "7dias" | "personalizado";
@@ -30,20 +28,44 @@ function rangoDe(tipo: Rango, desdeTexto: string, hastaTexto: string): [Date, Da
 
 const aLocal = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
-/** Tramos del recorrido con su velocidad: el mapa los tiñe del azul (lento) al rojo (rápido). */
-function tramos(puntos: PuntoRecorrido[]): FeatureCollection {
-  const features = [];
-  for (let i = 1; i < puntos.length; i++) {
-    features.push({
-      type: "Feature" as const,
-      properties: { v: puntos[i].velocidadKmh ?? 0 },
-      geometry: {
-        type: "LineString" as const,
-        coordinates: [[puntos[i - 1].longitud, puntos[i - 1].latitud], [puntos[i].longitud, puntos[i].latitud]],
-      },
-    });
+/** Del azul (lento) al rojo (rápido), en km/h. */
+const ESCALA_VELOCIDAD: [number, [number, number, number]][] = [
+  [0, [56, 189, 248]],
+  [20, [34, 197, 94]],
+  [50, [234, 179, 8]],
+  [80, [249, 115, 22]],
+  [110, [220, 38, 38]],
+];
+
+function colorVelocidad(kmh: number): string {
+  const v = Math.min(Math.max(kmh, 0), 110);
+  for (let i = 1; i < ESCALA_VELOCIDAD.length; i++) {
+    const [hasta, fin] = ESCALA_VELOCIDAD[i];
+    if (v <= hasta) {
+      const [desde, inicio] = ESCALA_VELOCIDAD[i - 1];
+      const f = (v - desde) / (hasta - desde);
+      const [r, g, b] = inicio.map((c, k) => Math.round(c + (fin[k] - c) * f));
+      return `rgb(${r} ${g} ${b})`;
+    }
   }
-  return { type: "FeatureCollection", features };
+  return "rgb(220 38 38)";
+}
+
+/**
+ * La ruta en tramos de un solo color. Las velocidades se redondean de a 5 km/h y los tramos
+ * seguidos del mismo color se unen: una línea por color en vez de una por cada par de puntos.
+ */
+function tramos(puntos: PuntoRecorrido[]): { color: string; camino: google.maps.LatLngLiteral[] }[] {
+  const resultado: { color: string; camino: google.maps.LatLngLiteral[] }[] = [];
+  for (let i = 1; i < puntos.length; i++) {
+    const color = colorVelocidad(Math.round((puntos[i].velocidadKmh ?? 0) / 5) * 5);
+    const desde = { lat: puntos[i - 1].latitud, lng: puntos[i - 1].longitud };
+    const hasta = { lat: puntos[i].latitud, lng: puntos[i].longitud };
+    const ultimo = resultado[resultado.length - 1];
+    if (ultimo?.color === color) ultimo.camino.push(hasta);
+    else resultado.push({ color, camino: [desde, hasta] });
+  }
+  return resultado;
 }
 
 /** Posición en el instante t, interpolada entre los dos puntos que lo rodean. */
@@ -65,8 +87,8 @@ function posicionEn(puntos: PuntoRecorrido[], tiempos: number[], t: number): [nu
 
 export function Recorridos() {
   const contenedor = useRef<HTMLDivElement>(null);
-  const [fondo, setFondo] = useState<FondoMapa>("calles");
-  const { mapa, version } = useMapa(contenedor, fondo);
+  const [fondo, setFondo] = useState<FondoMapa>("mapa");
+  const { mapa, aviso } = useMapa(contenedor, fondo);
   const [params, setParams] = useSearchParams();
   const deviceId = params.get("equipo") ?? "";
   const [tipoRango, setTipoRango] = useState<Rango>("hoy");
@@ -96,106 +118,67 @@ export function Recorridos() {
   const tiempos = useMemo(() => puntos.map((p) => new Date(p.momento).getTime()), [puntos]);
 
   // ---- Capas ----
-  useEffect(() => {
-    if (!mapa || version === 0) return;
-    instalarCapasGeocercas(mapa, 0.08);
-
-    if (!mapa.getSource("ruta")) {
-      mapa.addSource("ruta", { type: "geojson", data: VACIO });
-      mapa.addLayer({
-        id: "ruta-sombra",
-        type: "line",
-        source: "ruta",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#0f172a", "line-opacity": 0.25, "line-width": 9, "line-blur": 3 },
-      });
-      mapa.addLayer({
-        id: "ruta",
-        type: "line",
-        source: "ruta",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-width": 5,
-          "line-color": ["interpolate", ["linear"], ["get", "v"], 0, "#38bdf8", 20, "#22c55e", 50, "#eab308", 80, "#f97316", 110, "#dc2626"],
-        },
-      });
-
-      mapa.addSource("hitos", { type: "geojson", data: VACIO });
-      mapa.addLayer({
-        id: "paradas",
-        type: "circle",
-        source: "hitos",
-        filter: ["==", ["get", "tipo"], "parada"],
-        paint: { "circle-radius": 9, "circle-color": "#7c3aed", "circle-stroke-color": "#fff", "circle-stroke-width": 2.5 },
-      });
-      mapa.addLayer({
-        id: "paradas-texto",
-        type: "symbol",
-        source: "hitos",
-        filter: ["==", ["get", "tipo"], "parada"],
-        layout: { "text-field": ["get", "etiqueta"], "text-font": FUENTE, "text-size": 9, "text-allow-overlap": true },
-        paint: { "text-color": "#fff" },
-      });
-      mapa.addLayer({
-        id: "extremos",
-        type: "circle",
-        source: "hitos",
-        filter: ["in", ["get", "tipo"], ["literal", ["inicio", "fin"]]],
-        paint: {
-          "circle-radius": 8,
-          "circle-color": ["match", ["get", "tipo"], "inicio", "#16a34a", "#0f172a"],
-          "circle-stroke-color": "#fff",
-          "circle-stroke-width": 3,
-        },
-      });
-      mapa.addLayer({
-        id: "eventos",
-        type: "circle",
-        source: "hitos",
-        filter: ["==", ["get", "tipo"], "evento"],
-        paint: { "circle-radius": 5, "circle-color": ["get", "color"], "circle-stroke-color": "#fff", "circle-stroke-width": 2 },
-      });
-    }
-  }, [mapa, version]);
+  const [zonas, setZonas] = useState<CapaGeocercas | null>(null);
 
   useEffect(() => {
-    if (version === 0) return;
-    ponerDatos(mapa, "geocercas", geocercasComoGeoJson((geocercas.data ?? []).filter((g) => g.activa)));
-  }, [mapa, version, geocercas.data]);
+    if (!mapa) return;
+    const capa = new CapaGeocercas(mapa, { opacidad: 0.08 });
+    setZonas(capa);
+    return () => {
+      capa.quitar();
+      setZonas(null);
+    };
+  }, [mapa]);
 
   useEffect(() => {
-    if (version === 0) return;
-    ponerDatos(mapa, "ruta", tramos(puntos));
+    zonas?.poner((geocercas.data ?? []).filter((g) => g.activa));
+  }, [zonas, geocercas.data]);
 
-    const hitos: FeatureCollection = { type: "FeatureCollection", features: [] };
-    if (puntos.length) {
-      const primero = puntos[0];
-      const ultimo = puntos[puntos.length - 1];
-      hitos.features.push(
-        { type: "Feature", properties: { tipo: "inicio" }, geometry: { type: "Point", coordinates: [primero.longitud, primero.latitud] } },
-        { type: "Feature", properties: { tipo: "fin" }, geometry: { type: "Point", coordinates: [ultimo.longitud, ultimo.latitud] } },
-      );
-    }
-    datos?.paradas.forEach((p, i) =>
-      hitos.features.push({
-        type: "Feature",
-        properties: { tipo: "parada", etiqueta: String(i + 1) },
-        geometry: { type: "Point", coordinates: [p.longitud, p.latitud] },
-      }),
+  // La ruta, con su sombra, y los hitos: inicio, fin, paradas numeradas y entradas o salidas de zonas.
+  useEffect(() => {
+    if (!mapa || puntos.length === 0) return;
+
+    const sombra = new google.maps.Polyline({
+      map: mapa,
+      path: puntos.map((p) => ({ lat: p.latitud, lng: p.longitud })),
+      strokeColor: "#0f172a",
+      strokeOpacity: 0.25,
+      strokeWeight: 9,
+      clickable: false,
+      zIndex: 5,
+    });
+    const lineas = tramos(puntos).map(
+      (t) => new google.maps.Polyline({ map: mapa, path: t.camino, strokeColor: t.color, strokeOpacity: 1, strokeWeight: 5, clickable: false, zIndex: 6 }),
     );
-    datos?.eventos.forEach((ev) =>
-      hitos.features.push({
-        type: "Feature",
-        properties: { tipo: "evento", color: ev.tipo === "ENTRADA" ? "#16a34a" : "#ea580c" },
-        geometry: { type: "Point", coordinates: [ev.longitud, ev.latitud] },
-      }),
-    );
-    ponerDatos(mapa, "hitos", hitos);
-  }, [mapa, version, puntos, datos]);
+
+    const primero = puntos[0];
+    const ultimo = puntos[puntos.length - 1];
+    const hitos = [
+      marcador(mapa, [primero.longitud, primero.latitud], elemento("hito-mapa", undefined, { tipo: "inicio" }), { title: `Inicio · ${formatoFechaHora(primero.momento)}`, zIndex: 40 }),
+      marcador(mapa, [ultimo.longitud, ultimo.latitud], elemento("hito-mapa", undefined, { tipo: "fin" }), { title: `Último punto · ${formatoFechaHora(ultimo.momento)}`, zIndex: 40 }),
+      ...(datos?.paradas ?? []).map((p, i) =>
+        marcador(mapa, [p.longitud, p.latitud], elemento("hito-mapa", String(i + 1), { tipo: "parada" }), {
+          title: `Parada ${i + 1} · ${duracion(p.minutos)} · ${formatoHora(p.inicio)} – ${formatoHora(p.fin)}`,
+          zIndex: 30,
+        }),
+      ),
+      ...(datos?.eventos ?? []).map((ev) =>
+        marcador(mapa, [ev.longitud, ev.latitud], elemento("hito-mapa", undefined, { tipo: ev.tipo === "ENTRADA" ? "entrada" : "salida" }), {
+          title: `${ev.tipo === "ENTRADA" ? "Entró a" : "Salió de"} ${ev.nombre} · ${formatoHora(ev.momento)}`,
+          zIndex: 20,
+        }),
+      ),
+    ];
+
+    return () => {
+      sombra.setMap(null);
+      lineas.forEach((l) => l.setMap(null));
+      hitos.forEach((h) => { h.map = null; });
+    };
+  }, [mapa, puntos, datos]);
 
   const encuadrar = useCallback(() => {
-    const limites = caja(puntos.map((p) => [p.longitud, p.latitud]));
-    if (mapa && limites) mapa.fitBounds(limites as LngLatBoundsLike, { padding: { top: 80, bottom: 140, left: 440, right: 80 }, maxZoom: 16, duration: 900 });
+    if (mapa) encuadrarMapa(mapa, puntos.map((p) => [p.longitud, p.latitud]), MARGEN, 16);
   }, [mapa, puntos]);
 
   useEffect(() => {
@@ -206,7 +189,7 @@ export function Recorridos() {
   const [t, setT] = useState(0);
   const [reproduciendo, setReproduciendo] = useState(false);
   const [velocidad, setVelocidad] = useState(60);
-  const vehiculo = useRef<Marker | null>(null);
+  const vehiculo = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
 
   const inicio = tiempos[0] ?? 0;
   const fin = tiempos[tiempos.length - 1] ?? 0;
@@ -241,21 +224,24 @@ export function Recorridos() {
 
   useEffect(() => {
     const posicion = posicionEn(puntos, tiempos, t);
+    const actual = vehiculo.current;
     if (!mapa || !posicion) {
-      vehiculo.current?.remove();
+      if (actual) actual.map = null;
       vehiculo.current = null;
       return;
     }
-    if (!vehiculo.current) {
-      const elemento = document.createElement("div");
-      elemento.className = "vehiculo";
-      vehiculo.current = new Marker({ element: elemento }).setLngLat(posicion).addTo(mapa);
+    // Si el mapa se creó de nuevo (cambio de tema), el vehículo se pone en el nuevo.
+    if (!actual || actual.map !== mapa) {
+      if (actual) actual.map = null;
+      vehiculo.current = marcador(mapa, posicion, elemento("vehiculo"), { zIndex: 50 });
     } else {
-      vehiculo.current.setLngLat(posicion);
+      actual.position = aLatLng(posicion);
     }
   }, [mapa, puntos, tiempos, t]);
 
-  useEffect(() => () => { vehiculo.current?.remove(); }, []);
+  useEffect(() => () => {
+    if (vehiculo.current) vehiculo.current.map = null;
+  }, []);
 
   const elegido = equipos.find((e) => e.deviceId === deviceId);
   const est = datos?.estadisticas;
@@ -263,6 +249,8 @@ export function Recorridos() {
   return (
     <div className="pantalla-mapa">
       <div ref={contenedor} className="mapa" />
+      <AvisoMapa texto={aviso} />
+      <BuscadorDirecciones mapa={mapa} margen={MARGEN} />
 
       <aside className="panel-flota panel-recorrido vidrio" aria-label="Recorrido">
         <div className="panel-cabeza">
@@ -399,6 +387,9 @@ export function Recorridos() {
     </div>
   );
 }
+
+/** Lo que tapan el panel (izquierda) y el reproductor (abajo). */
+const MARGEN: Margen = { top: 80, bottom: 140, left: 440, right: 80 };
 
 function Estadistica({ Icono, valor, nombre }: { Icono: typeof Clock; valor: string; nombre: string }) {
   return (

@@ -24,16 +24,6 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       sourcemap: false,
-      chunkSizeWarningLimit: 1100,
-      // MapLibre pesa lo suyo y va en su propio archivo: cambia poco entre versiones, así el
-      // navegador lo conserva en caché cuando se publica una versión nueva de la consola.
-      rolldownOptions: {
-        output: {
-          advancedChunks: {
-            groups: [{ name: "maplibre", test: /node_modules[\\/]maplibre-gl/ }],
-          },
-        },
-      },
     },
   };
 });
