@@ -11,14 +11,38 @@ export const aLatLng = ([lng, lat]: [number, number]): google.maps.LatLngLiteral
 const ZOOM_NOMBRES_ZONAS = 12;
 const ZOOM_NOMBRES_EQUIPOS = 14;
 
+let marcadoresRotos = false;
+
+/**
+ * Crea un marcador avanzado, o null si Google no puede. Cuando Google rechaza la key, su librería
+ * de marcadores queda rota y lanza al crear cualquiera; sin esto el error tumbaba la pantalla
+ * entera (quedaba en negro). Mejor un mapa sin ese marcador que ninguna pantalla.
+ */
+export function nuevoMarcador(
+  opciones: google.maps.marker.AdvancedMarkerElementOptions,
+): google.maps.marker.AdvancedMarkerElement | null {
+  try {
+    return new google.maps.marker.AdvancedMarkerElement(opciones);
+  } catch (e) {
+    if (!marcadoresRotos) console.warn("Google no pudo crear marcadores (¿rechazó la key?).", e);
+    marcadoresRotos = true;
+    return null;
+  }
+}
+
 /** Un marcador con contenido propio (HTML con las clases de la consola). */
 export function marcador(
   mapa: google.maps.Map,
   posicion: [number, number],
   contenido: HTMLElement,
   opciones: Partial<google.maps.marker.AdvancedMarkerElementOptions> = {},
-): google.maps.marker.AdvancedMarkerElement {
-  return new google.maps.marker.AdvancedMarkerElement({ map: mapa, position: aLatLng(posicion), content: contenido, ...opciones });
+): google.maps.marker.AdvancedMarkerElement | null {
+  return nuevoMarcador({ map: mapa, position: aLatLng(posicion), content: contenido, ...opciones });
+}
+
+/** Saca del mapa los marcadores que se lograron crear. */
+export function quitarMarcadores(...marcadores: (google.maps.marker.AdvancedMarkerElement | null)[]) {
+  for (const m of marcadores) if (m) m.map = null;
 }
 
 export function elemento(clase: string, texto?: string, datos: Record<string, string> = {}): HTMLDivElement {
@@ -69,7 +93,7 @@ interface ZonaDibujada {
   forma: google.maps.Polygon;
   /** Borde punteado de las inactivas: los polígonos de Google no tienen trazo punteado. */
   punteado: google.maps.Polyline | null;
-  etiqueta: google.maps.marker.AdvancedMarkerElement;
+  etiqueta: google.maps.marker.AdvancedMarkerElement | null;
 }
 
 /**
@@ -147,7 +171,7 @@ export class CapaGeocercas {
 
     const nombre = elemento("etiqueta-zona", g.nombre);
     nombre.style.setProperty("--color", g.color);
-    const etiqueta = new google.maps.marker.AdvancedMarkerElement({
+    const etiqueta = nuevoMarcador({
       position: { lat: g.latitud, lng: g.longitud },
       content: nombre,
       zIndex: 3,
@@ -170,14 +194,14 @@ export class CapaGeocercas {
 
   private mostrarNombres() {
     const visible = (this.mapa.getZoom() ?? 0) >= ZOOM_NOMBRES_ZONAS;
-    for (const z of this.zonas.values()) z.etiqueta.map = visible ? this.mapa : null;
+    for (const z of this.zonas.values()) if (z.etiqueta) z.etiqueta.map = visible ? this.mapa : null;
   }
 
   private borrar(uid: string, zona: ZonaDibujada) {
     google.maps.event.clearInstanceListeners(zona.forma);
     zona.forma.setMap(null);
     zona.punteado?.setMap(null);
-    zona.etiqueta.map = null;
+    if (zona.etiqueta) zona.etiqueta.map = null;
     this.zonas.delete(uid);
   }
 }
@@ -230,13 +254,15 @@ export class CapaFlota {
         punto.append(elemento("equipo-nombre", e.nombre));
         // Sin clic propio, que el clic pase al mapa (en Geocercas, para dibujar encima).
         if (!this.alElegir) punto.style.pointerEvents = "none";
-        m = new google.maps.marker.AdvancedMarkerElement({
+        const creado = nuevoMarcador({
           position: posicion,
           content: punto,
           title: e.nombre,
           gmpClickable: !!this.alElegir,
           zIndex: 10,
         });
+        if (!creado) continue;
+        m = creado;
         if (this.alElegir) m.addEventListener("gmp-click", () => this.alElegir!(e.deviceId));
         this.marcadores.set(e.deviceId, m);
         nuevos.push(m);
@@ -269,12 +295,13 @@ export class CapaFlota {
         const grupo = elemento("grupo-equipos", count > 999 ? `${Math.round(count / 100) / 10}k` : String(count));
         grupo.style.setProperty("--proporcion", String(enLinea / count));
         grupo.style.setProperty("--tamano", `${count < 10 ? 34 : count < 50 ? 44 : count < 200 ? 56 : 68}px`);
-        return new google.maps.marker.AdvancedMarkerElement({
+        // Solo hay grupos si se pudieron crear los marcadores de los equipos: este también se puede.
+        return nuevoMarcador({
           position,
           content: grupo,
           title: `${count} equipos, ${enLinea} en línea`,
           zIndex: 1000 + count,
-        });
+        })!;
       },
     };
   }

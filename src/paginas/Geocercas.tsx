@@ -8,7 +8,7 @@ import { useEmpresaClave, useFlota, useListaGeocercas } from "../api/consultas";
 import { Aviso, Cargando, Dialogo } from "../componentes/Basicos";
 import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
 import { BuscadorDirecciones, type Lugar } from "../mapa/BuscadorDirecciones";
-import { aLatLng, CapaFlota, CapaGeocercas, elemento, encuadrar, marcador, type Margen } from "../mapa/capas";
+import { aLatLng, CapaFlota, CapaGeocercas, elemento, encuadrar, marcador, quitarMarcadores, type Margen } from "../mapa/capas";
 import { anilloCirculo, distancia, poligonoDe } from "../mapa/geo";
 import type { FondoMapa } from "../mapa/estilos";
 import { useMapa } from "../mapa/useMapa";
@@ -152,7 +152,7 @@ export function Geocercas() {
   useEffect(() => {
     if (!mapa || !puntosBorrador?.length) return;
     const vertices = puntosBorrador.map((p) => marcador(mapa, p, elemento("vertice"), { zIndex: 25 }));
-    return () => vertices.forEach((v) => { v.map = null; });
+    return () => quitarMarcadores(...vertices);
   }, [mapa, puntosBorrador]);
 
   // ---- Interacción de dibujo ----

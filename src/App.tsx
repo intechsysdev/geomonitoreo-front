@@ -1,5 +1,6 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Marco } from "./componentes/Marco";
+import { LimiteErrores } from "./componentes/LimiteErrores";
 import { Aviso, Cargando } from "./componentes/Basicos";
 import { useSesion } from "./sesion/SesionContexto";
 import { Login } from "./paginas/Login";
@@ -23,6 +24,7 @@ export default function App() {
 
 function Consola() {
   const { autenticado, sesion, errorSesion, reintentarSesion, empresaActiva, esAdministradorPlataforma, salir } = useSesion();
+  const { pathname } = useLocation();
 
   if (!autenticado) return <Login />;
 
@@ -68,7 +70,9 @@ function Consola() {
           )}
         </div>
       ) : (
-        // La clave es la empresa: al cambiarla, cada pantalla se monta de nuevo con sus datos.
+        // La clave es la empresa: al cambiarla, cada pantalla se monta de nuevo con sus datos. El
+        // límite de errores se reinicia al cambiar de pantalla: una que falló no tumba las demás.
+        <LimiteErrores key={pathname}>
         <Routes key={empresaActiva.oneTenantId}>
           <Route path="/monitor" element={<Monitor />} />
           <Route path="/dispositivos" element={<Dispositivos />} />
@@ -77,6 +81,7 @@ function Consola() {
           <Route path="/vinculos" element={esAdministradorPlataforma ? <Vinculos /> : <Navigate to="/monitor" replace />} />
           <Route path="*" element={<Navigate to="/monitor" replace />} />
         </Routes>
+        </LimiteErrores>
       )}
     </Marco>
   );

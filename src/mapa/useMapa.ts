@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useConfiguracion } from "../api/consultas";
 import { useTema } from "../tema/Tema";
 import { CENTRO_INICIAL, MAP_ID_DEMO, tipoDe, type FondoMapa } from "./estilos";
-import { alRechazarKey, cargarGoogleMaps, librerias } from "./google";
+import { alRechazarKey, cargarGoogleMaps, librerias, rechazoDeKey } from "./google";
 
 /**
  * Crea el mapa de Google en el contenedor con la key de la empresa (variable GOOGLE_MAPS_API_KEY
@@ -26,7 +26,8 @@ export function useMapa(contenedor: RefObject<HTMLDivElement | null>, fondo: Fon
 
   useEffect(() => {
     const div = contenedor.current;
-    if (!div || !llaves) return;
+    // Con la key ya rechazada, Google falla por dentro al crear otro mapa: ni se intenta.
+    if (!div || !llaves || rechazoDeKey()) return;
 
     let vivo = true;
     let creado: google.maps.Map | null = null;
@@ -34,7 +35,7 @@ export function useMapa(contenedor: RefObject<HTMLDivElement | null>, fondo: Fon
     cargarGoogleMaps(llaves.apiKey)
       .then(librerias)
       .then(({ mapas }) => {
-        if (!vivo) return;
+        if (!vivo || rechazoDeKey()) return;
         creado = new mapas.Map(div, {
           center: vista.current?.center ?? CENTRO_INICIAL,
           zoom: vista.current?.zoom ?? 11,
@@ -46,7 +47,6 @@ export function useMapa(contenedor: RefObject<HTMLDivElement | null>, fondo: Fon
           gestureHandling: "greedy",
           clickableIcons: false,
         });
-        setError(null);
         setMapa(creado);
       })
       .catch((e: Error) => vivo && setError(e.message));
@@ -72,5 +72,7 @@ export function useMapa(contenedor: RefObject<HTMLDivElement | null>, fondo: Fon
   if (!aviso && configuracion.data && !llaves)
     aviso = "Falta la key de Google Maps de la empresa: cárguela en Intechsys One, app Geomonitoreo → Variables (GOOGLE_MAPS_API_KEY).";
 
-  return { mapa, aviso };
+  // Con la key rechazada, la librería de Google queda a medias: las pantallas no dibujan nada
+  // (quitan lo que tenían) y en su lugar va el aviso.
+  return { mapa: error ? null : mapa, aviso };
 }

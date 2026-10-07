@@ -157,7 +157,9 @@
     isolation: isolate;
   }
 
-  .mapa { position: absolute; inset: 0; }
+  /* z-index 0: el mapa es su propio contexto de apilado. Google dibuja capas con z-index altos
+     (su diálogo de error, el velo del modo de desarrollo); sin esto quedaban sobre los paneles. */
+  .mapa { position: absolute; inset: 0; z-index: 0; }
 
 
   .panel-flota {

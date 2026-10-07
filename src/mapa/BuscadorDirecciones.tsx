@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Loader2, MapPin, Search, X } from "lucide-react";
 import { coordenadas } from "../formato";
-import { elemento, encuadrar, irA, marcador, type Margen } from "./capas";
+import { elemento, encuadrar, irA, marcador, quitarMarcadores, type Margen } from "./capas";
 
 /** Un lugar encontrado: lo que se le pasa a las acciones de cada pantalla. */
 export interface Lugar {
@@ -193,7 +193,7 @@ export function BuscadorDirecciones({
   useEffect(() => {
     if (!mapa || !lugar) return;
     const pin = marcador(mapa, lugar.posicion, elemento("lugar-pin"), { title: lugar.direccion, zIndex: 3000 });
-    return () => { pin.map = null; };
+    return () => quitarMarcadores(pin);
   }, [mapa, lugar]);
 
   async function elegir(s: Sugerencia) {

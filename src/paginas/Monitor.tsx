@@ -9,7 +9,7 @@ import { useConfiguracion, useEmpresaClave, useFlota, useGeocercas } from "../ap
 import { Aviso, Bateria, Cargando, PuntoEstado } from "../componentes/Basicos";
 import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
 import { BuscadorDirecciones, type Lugar } from "../mapa/BuscadorDirecciones";
-import { CapaFlota, CapaGeocercas, elemento, encuadrar as encuadrarMapa, irA, marcador, type Margen } from "../mapa/capas";
+import { CapaFlota, CapaGeocercas, elemento, encuadrar as encuadrarMapa, irA, marcador, quitarMarcadores, type Margen } from "../mapa/capas";
 import { distancia } from "../mapa/geo";
 import type { FondoMapa } from "../mapa/estilos";
 import { useMapa } from "../mapa/useMapa";
@@ -124,7 +124,7 @@ export function Monitor() {
   useEffect(() => {
     if (!mapa || latElegido === null || lngElegido === null || !estadoElegido) return;
     const pulso = marcador(mapa, [lngElegido, latElegido], elemento("pulso", undefined, { estado: estadoElegido }), { zIndex: 2000 });
-    return () => { pulso.map = null; };
+    return () => quitarMarcadores(pulso);
   }, [mapa, latElegido, lngElegido, estadoElegido]);
 
   const ultimoCentrado = useRef<string | null>(null);

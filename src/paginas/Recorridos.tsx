@@ -7,7 +7,7 @@ import { useEmpresaClave, useFlota, useGeocercas } from "../api/consultas";
 import { Aviso, Cargando, PuntoEstado } from "../componentes/Basicos";
 import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
 import { BuscadorDirecciones } from "../mapa/BuscadorDirecciones";
-import { aLatLng, CapaGeocercas, elemento, encuadrar as encuadrarMapa, marcador, type Margen } from "../mapa/capas";
+import { aLatLng, CapaGeocercas, elemento, encuadrar as encuadrarMapa, marcador, quitarMarcadores, type Margen } from "../mapa/capas";
 import type { FondoMapa } from "../mapa/estilos";
 import { useMapa } from "../mapa/useMapa";
 import { duracion, formatoFechaHora, formatoHora } from "../formato";
@@ -173,7 +173,7 @@ export function Recorridos() {
     return () => {
       sombra.setMap(null);
       lineas.forEach((l) => l.setMap(null));
-      hitos.forEach((h) => { h.map = null; });
+      quitarMarcadores(...hitos);
     };
   }, [mapa, puntos, datos]);
 
