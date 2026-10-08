@@ -9,32 +9,41 @@
   --fuente: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --fuente-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
 
-  /* Marca: un cian profundo, del agua y del radar. */
-  --marca-claro: oklch(52% 0.115 214);
-  --marca-oscuro: oklch(80% 0.13 200);
+  /* Marca Intechsys: carmesí para la acción (medio de día, vivo de noche), carbón para
+     el texto y las superficies, ámbar para lo que pide atención. */
+  --marca-claro: #af1839;
+  --marca-oscuro: #e51e4a;
+  --marca-profunda: #751326;
+  --marca-viva: #e51e4a;
+  --marca-ambar: #da830b;
+  --marca-oro: #f8b21d;
+  /* La barra de la guía de marca: profundo → vivo → profundo. */
+  --marca-banda: linear-gradient(90deg, var(--marca-profunda), var(--marca-viva) 50%, var(--marca-profunda));
 
-  /* Señales: lo único con color fuerte en la pantalla. */
-  --ok-claro: oklch(60% 0.16 152);
+  /* Señales: lo único con color fuerte en la pantalla. El aviso es el ámbar de la marca
+     (oscurecido de día para leerse como texto); el peligro, su carmesí profundo. */
+  --ok-claro: oklch(58% 0.16 152);
   --ok-oscuro: oklch(78% 0.17 152);
-  --aviso-claro: oklch(66% 0.15 70);
-  --aviso-oscuro: oklch(82% 0.15 80);
-  --peligro-claro: oklch(57% 0.2 25);
-  --peligro-oscuro: oklch(72% 0.17 22);
-  --apagado-claro: oklch(60% 0.02 255);
-  --apagado-oscuro: oklch(66% 0.02 255);
+  --aviso-claro: #a35f07;
+  --aviso-oscuro: #f8b21d;
+  --peligro-claro: #751326;
+  --peligro-oscuro: #f2456b;
+  --apagado-claro: #8a8986;
+  --apagado-oscuro: #9a9894;
 
-  --fondo-claro: oklch(97.6% 0.004 240);
-  --fondo-oscuro: oklch(16.5% 0.018 255);
-  --superficie-claro: oklch(100% 0 0);
-  --superficie-oscuro: oklch(21.5% 0.02 255);
-  --hundido-claro: oklch(95.5% 0.006 240);
-  --hundido-oscuro: oklch(25.5% 0.02 255);
-  --tinta-claro: oklch(23% 0.025 255);
-  --tinta-oscuro: oklch(95% 0.008 240);
-  --tinta-suave-claro: oklch(48% 0.02 255);
-  --tinta-suave-oscuro: oklch(72% 0.015 250);
-  --linea-claro: oklch(90% 0.008 250);
-  --linea-oscuro: oklch(32% 0.02 255);
+  /* Neutros cálidos, de la familia del carbón de la marca. */
+  --fondo-claro: #f7f6f4;
+  --fondo-oscuro: #181817;
+  --superficie-claro: #ffffff;
+  --superficie-oscuro: #232321;
+  --hundido-claro: #efeeeb;
+  --hundido-oscuro: #2b2b29;
+  --tinta-claro: #1f1f1d;
+  --tinta-oscuro: #f3f2ef;
+  --tinta-suave-claro: #5a5958;
+  --tinta-suave-oscuro: #a9a7a3;
+  --linea-claro: #e4e2de;
+  --linea-oscuro: #3a3a38;
 
   --marca: var(--marca-claro);
   --ok: var(--ok-claro);
@@ -80,8 +89,8 @@
   --vidrio: color-mix(in oklab, var(--superficie) 80%, transparent);
   --vidrio-borde: color-mix(in oklab, var(--tinta) 10%, transparent);
   --marca-suave: color-mix(in oklab, var(--marca) 14%, transparent);
-  --sombra: 0 1px 2px oklch(0% 0 0 / 0.06), 0 8px 24px -8px oklch(20% 0.03 255 / 0.22);
-  --sombra-alta: 0 2px 4px oklch(0% 0 0 / 0.08), 0 24px 48px -12px oklch(20% 0.04 255 / 0.35);
+  --sombra: 0 1px 2px oklch(0% 0 0 / 0.06), 0 8px 24px -8px rgb(31 31 29 / 0.22);
+  --sombra-alta: 0 2px 4px oklch(0% 0 0 / 0.08), 0 24px 48px -12px rgb(31 31 29 / 0.35);
 
   --radio: 14px;
   --radio-chico: 9px;
@@ -174,7 +183,7 @@
     &.primario {
       background: var(--marca);
       border-color: transparent;
-      color: light-dark(white, oklch(18% 0.03 230));
+      color: white;
       &:hover:not(:disabled) { background: color-mix(in oklab, var(--marca) 88%, black); }
     }
 
@@ -352,7 +361,7 @@
     @starting-style { &[open] { opacity: 0; translate: 0 0.75rem; } }
 
     &::backdrop {
-      background: oklch(15% 0.03 255 / 0.45);
+      background: rgb(31 31 29 / 0.5);
       backdrop-filter: blur(3px);
     }
 

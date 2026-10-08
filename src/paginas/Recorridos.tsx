@@ -141,7 +141,7 @@ export function Recorridos() {
     const sombra = new google.maps.Polyline({
       map: mapa,
       path: puntos.map((p) => ({ lat: p.latitud, lng: p.longitud })),
-      strokeColor: "#0f172a",
+      strokeColor: "#1f1f1d",
       strokeOpacity: 0.25,
       strokeWeight: 9,
       clickable: false,

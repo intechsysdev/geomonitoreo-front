@@ -21,10 +21,11 @@ const RADIO_DESDE_LUGAR = 200;
 
 /** Línea punteada del borrador: los trazos de Google no tienen guiones, se arman con símbolos. */
 const GUIONES: google.maps.IconSequence[] = [
-  { icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: "#0ea5e9", strokeWeight: 2.5, scale: 3 }, offset: "0", repeat: "12px" },
+  { icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: "#e51e4a", strokeWeight: 2.5, scale: 3 }, offset: "0", repeat: "12px" },
 ];
 
-const COLORES = ["#0ea5e9", "#22c55e", "#eab308", "#f97316", "#ef4444", "#a855f7", "#ec4899", "#14b8a6"];
+/** Primero los de la marca; después tonos bien distintos entre sí, para diferenciar zonas vecinas. */
+const COLORES = ["#e51e4a", "#f8b21d", "#da830b", "#751326", "#22c55e", "#14b8a6", "#0ea5e9", "#a855f7"];
 
 /** Lo que se está dibujando: el tipo y los puntos puestos hasta ahora. */
 interface Borrador {
@@ -96,7 +97,7 @@ export function Geocercas() {
     const zonas = new CapaGeocercas(mapa, { opacidad: 0.16, alElegir: setElegida });
     const flota = new CapaFlota(mapa);
     // El borrador: relleno tenue y contorno punteado, sin recibir clics (los clics son para dibujar).
-    const relleno = new google.maps.Polygon({ map: mapa, clickable: false, fillColor: "#0ea5e9", fillOpacity: 0.18, strokeOpacity: 0, zIndex: 20 });
+    const relleno = new google.maps.Polygon({ map: mapa, clickable: false, fillColor: "#e51e4a", fillOpacity: 0.16, strokeOpacity: 0, zIndex: 20 });
     const contorno = new google.maps.Polyline({ map: mapa, clickable: false, strokeOpacity: 0, icons: GUIONES, zIndex: 21 });
     setCapas({ zonas, flota, relleno, contorno });
     return () => {

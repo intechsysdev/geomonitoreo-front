@@ -16,8 +16,8 @@ export function Logo({ tamano = 36 }: { tamano?: number }) {
     <svg width={tamano} height={tamano} viewBox="0 0 32 32" aria-hidden className="logo">
       <defs>
         <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#22d3ee" />
-          <stop offset="1" stopColor="#0e7490" />
+          <stop offset="0" stopColor="#e51e4a" />
+          <stop offset="1" stopColor="#751326" />
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="9" fill="url(#logo-g)" />
