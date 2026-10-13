@@ -4,6 +4,7 @@ import { avisarAlPerderSesion, iniciarSesion, revocarSesion, verificarSesion } f
 import { borrarSesion, escucharOtrasPestanas, fijarTenant, leerSesion } from "../api/sesionAlmacenada";
 import { obtenerSesion } from "../api/plataforma";
 import type { EmpresaAccesible, Sesion } from "../api/plataforma";
+import { marcarSalida, olvidarMarcasDeSalida } from "../api/sso";
 
 interface Contexto {
   correo: string | null;
@@ -30,6 +31,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
   const [intento, setIntento] = useState(0);
 
   const salir = useCallback(() => {
+    marcarSalida();
     void revocarSesion();
     borrarSesion();
     setCorreo(null);
@@ -128,6 +130,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
 
   const entrar = useCallback(async (nuevoCorreo: string, clave: string) => {
     await iniciarSesion(nuevoCorreo, clave);
+    olvidarMarcasDeSalida();
     setCorreo(nuevoCorreo);
   }, []);
 

@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Hexagon, LogIn, Moon, Radar, Route, Sun } from "lucide-react";
 import { useSesion } from "../sesion/SesionContexto";
 import { useTema } from "../tema/Tema";
-import { ssoDisponible } from "../api/sso";
-import { Aviso } from "../componentes/Basicos";
+import { acabaDeSalir, marcarEntradaAutomatica, puedeEntrarSolo, ssoDisponible } from "../api/sso";
+import { Aviso, Cargando } from "../componentes/Basicos";
 import { Logo } from "../componentes/Marco";
 
 const PUNTOS = [
@@ -19,6 +19,15 @@ export function Login() {
   const [clave, setClave] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const navigate = useNavigate();
+
+  // Con sesión en One se entra sin pasar por este formulario: es el inicio de sesión único.
+  const [entrandoSolo] = useState(puedeEntrarSolo);
+  useEffect(() => {
+    if (!entrandoSolo) return;
+    marcarEntradaAutomatica();
+    navigate("/sso", { replace: true });
+  }, [entrandoSolo, navigate]);
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
@@ -32,6 +41,8 @@ export function Login() {
       setEnviando(false);
     }
   }
+
+  if (entrandoSolo) return <Cargando texto="Conectando con One…" />;
 
   return (
     <div className="ingreso">
@@ -68,7 +79,7 @@ export function Login() {
 
           {ssoDisponible() && (
             <>
-              <Link to="/sso?cuenta=elegir" className="boton primario ancho grande">
+              <Link to={acabaDeSalir() ? "/sso?cuenta=elegir" : "/sso"} className="boton primario ancho grande">
                 <LogIn aria-hidden /> Entrar con One
               </Link>
               <div className="separador"><span>o con tu correo</span></div>

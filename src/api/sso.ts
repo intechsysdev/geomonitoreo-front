@@ -47,6 +47,35 @@ async function reto(verificador: string): Promise<string> {
 export const ssoDisponible = () => PORTAL !== "" && ONE !== "";
 
 /**
+ * "Salir" de la consola no cierra la sesión del portal de One. Sin esta marca, el login entraría
+ * solo otra vez con ella en ese mismo instante; con ella se muestra el login y "Entrar con One"
+ * pregunta con qué cuenta seguir. Vive en sessionStorage: muere con la pestaña.
+ */
+const CLAVE_SALIDA = "geo.sso.salio";
+
+/** Ya se intentó entrar solo en esta pestaña: si One falló, no se rebota en bucle. */
+const CLAVE_AUTOMATICA = "geo.sso.automatico";
+
+export const marcarSalida = () => sessionStorage.setItem(CLAVE_SALIDA, "1");
+export const acabaDeSalir = () => sessionStorage.getItem(CLAVE_SALIDA) === "1";
+
+/**
+ * Quien llega al login sin haber salido viene a usar la consola: si tiene sesión en One, entra
+ * con ella sin escribir nada; si no, One le pide la contraseña y lo devuelve aquí. Es lo que
+ * hace que una sola sesión de One sirva para todas las apps.
+ */
+export const puedeEntrarSolo = () =>
+  ssoDisponible() && !acabaDeSalir() && sessionStorage.getItem(CLAVE_AUTOMATICA) === null;
+
+export const marcarEntradaAutomatica = () => sessionStorage.setItem(CLAVE_AUTOMATICA, "1");
+
+/** Con sesión abierta, por cualquier vía, las marcas sobran. */
+export function olvidarMarcasDeSalida(): void {
+  sessionStorage.removeItem(CLAVE_SALIDA);
+  sessionStorage.removeItem(CLAVE_AUTOMATICA);
+}
+
+/**
  * Manda al usuario al portal de One. La empresa, si viene, es la que eligió en One al abrir la
  * app: se reenvía para que One compruebe que tiene acceso por ella y para dejarla elegida aquí.
  */
@@ -61,8 +90,8 @@ export async function iniciarSso(tenantId?: string | null, elegirCuenta = false)
   destino.searchParams.set("code_challenge_method", "S256");
   destino.searchParams.set("state", transaccion.estado);
   if (tenantId) destino.searchParams.set("tenant", tenantId);
-  // Desde el login de la consola no se entra en silencio con quien tenga la sesión abierta en
-  // One: quien acaba de salir quizá quiere entrar con otra cuenta. One pregunta con cuál seguir.
+  // Quien acaba de salir de la consola quizá quiere entrar con otra cuenta: One pregunta con
+  // cuál seguir en vez de entrar en silencio con la que tenga abierta.
   if (elegirCuenta) destino.searchParams.set("prompt", "select_account");
 
   // replace: el botón Atrás desde One no debe volver a esta página de paso y arrancar otro intento.
@@ -109,4 +138,5 @@ export async function completarSso(params: URLSearchParams): Promise<void> {
     correo: datos.user.email,
     tenantId: datos.tenantId ?? params.get("tenant") ?? null,
   });
+  olvidarMarcasDeSalida();
 }
