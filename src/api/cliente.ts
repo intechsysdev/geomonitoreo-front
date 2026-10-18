@@ -23,6 +23,13 @@ export class ErrorApi extends Error {
   }
 }
 
+/** La cuenta tiene verificación en dos pasos: hay que entrar por el login de One, que pide el código. */
+export class ErrorDobleFactor extends ErrorApi {
+  constructor() {
+    super(403, "Su cuenta tiene verificación en dos pasos: entre con One para escribir el código.");
+  }
+}
+
 /** Se dispara cuando la sesión deja de servir, para que la app vuelva al login. */
 let alPerderSesion: (() => void) | null = null;
 export function avisarAlPerderSesion(accion: () => void) {
@@ -172,6 +179,11 @@ export async function iniciarSesion(correo: string, clave: string): Promise<void
   });
 
   if (!respuesta.ok) {
+    // La contraseña es correcta pero la cuenta tiene verificación en dos pasos: ese código se
+    // pide en el login de One, no aquí.
+    const cuerpo = await respuesta.clone().json().catch(() => null);
+    if (respuesta.status === 403 && cuerpo?.requiresTwoFactor === true) throw new ErrorDobleFactor();
+
     throw new ErrorApi(
       respuesta.status,
       respuesta.status === 401 ? "Correo o contraseña incorrectos." : await mensajeDeError(respuesta),

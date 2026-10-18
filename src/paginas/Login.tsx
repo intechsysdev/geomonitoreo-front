@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Hexagon, LogIn, Moon, Radar, Route, Sun } from "lucide-react";
+import { ErrorDobleFactor } from "../api/cliente";
 import { useSesion } from "../sesion/SesionContexto";
 import { useTema } from "../tema/Tema";
 import { acabaDeSalir, marcarEntradaAutomatica, puedeEntrarSolo, ssoDisponible } from "../api/sso";
@@ -36,6 +37,11 @@ export function Login() {
     try {
       await entrar(correo.trim(), clave);
     } catch (e) {
+      // Con verificación en dos pasos se entra por One, que pide el código de la app.
+      if (e instanceof ErrorDobleFactor && ssoDisponible()) {
+        navigate("/sso", { replace: true });
+        return;
+      }
       setError(e instanceof Error ? e.message : "No se pudo entrar. Intenta de nuevo.");
     } finally {
       setEnviando(false);
