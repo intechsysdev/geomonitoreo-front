@@ -1,4 +1,5 @@
 import { enviarJson, obtenerJson } from "./cliente";
+import type { Geocerca } from "./geocercas";
 
 export interface Equipo {
   deviceId: string;
@@ -27,6 +28,35 @@ export interface Equipo {
 export interface Flota {
   equipos: Equipo[];
   consultado: string;
+}
+
+/** Una página de la flota, ordenada por nombre. Los equipos vienen sin posición. */
+export interface PaginaFlota {
+  equipos: Equipo[];
+  skip: number;
+  take: number;
+  /** La página vino llena: puede haber más equipos después. */
+  hayMas: boolean;
+  consultado: string;
+}
+
+/** Última posición de un equipo y las zonas que la contienen. */
+export interface UbicacionEquipo {
+  deviceId: string;
+  latitud: number;
+  longitud: number;
+  momento: string;
+  velocidad: number | null;
+  rumbo: number | null;
+  geocercas: string[];
+}
+
+/** Las zonas de un equipo según su última posición. */
+export interface GeocercasEquipo {
+  /** False si el equipo no ha reportado posición. */
+  conPosicion: boolean;
+  dentro: Geocerca[];
+  cercanas: { geocerca: Geocerca; distanciaMetros: number }[];
 }
 
 export interface DetalleEquipo extends Equipo {
@@ -77,6 +107,8 @@ export interface Recorrido {
   };
   paradas: Parada[];
   eventos: EventoGeocerca[];
+  /** La forma de las zonas por las que entró o salió. */
+  geocercas: Geocerca[];
 }
 
 export interface ConfiguracionFlota {
@@ -102,3 +134,16 @@ export const obtenerRecorrido = (deviceId: string, desde: Date, hasta: Date) =>
 
 export const localizarEquipo = (deviceId: string) =>
   enviarJson<{ message: string }>(`/api/v1/dispositivos/${encodeURIComponent(deviceId)}/localizar`);
+
+/** Equipos por página: los que se muestran sin esperar y se ubican en unos segundos. */
+export const TAMANO_PAGINA = 100;
+
+export const obtenerPaginaEquipos = (skip: number, refrescar = false) =>
+  obtenerJson<PaginaFlota>(`/api/v1/flota/equipos?skip=${skip}&take=${TAMANO_PAGINA}${refrescar ? "&refrescar=true" : ""}`);
+
+export const obtenerUbicaciones = (deviceIds: string[], refrescar = false) =>
+  enviarJson<UbicacionEquipo[]>(`/api/v1/flota/ubicaciones${refrescar ? "?refrescar=true" : ""}`, { deviceIds });
+
+export const obtenerGeocercasEquipo = (deviceId: string) =>
+  obtenerJson<GeocercasEquipo>(`/api/v1/dispositivos/${encodeURIComponent(deviceId)}/geocercas`);
+

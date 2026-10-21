@@ -410,7 +410,34 @@
 
   .coordenadas { display: flex; align-items: center; gap: 0.35rem; }
   .icono-enlace { display: inline; inline-size: 0.85em; block-size: 0.85em; vertical-align: -0.1em; }
-  .zonas { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+  /* Geocercas del equipo: cada una se pinta en el mapa al tocarla. */
+  .bloque-titulo { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .zonas-equipo { display: grid; gap: 0.15rem; margin: 0; padding: 0; list-style: none; }
+  .item-zona {
+    inline-size: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: var(--radio-chico);
+    background: transparent;
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color 0.12s, border-color 0.12s;
+
+    & > svg:last-child { inline-size: 1rem; block-size: 1rem; color: var(--tinta-suave); flex: none; }
+    &:hover { background: color-mix(in oklab, var(--tinta) 5%, transparent); }
+    &:focus-visible { outline: 2px solid var(--marca); outline-offset: 1px; }
+    &[aria-pressed="true"] {
+      background: color-mix(in oklab, var(--color) 14%, transparent);
+      border-color: color-mix(in oklab, var(--color) 45%, transparent);
+      & > svg:last-child { color: var(--color); }
+    }
+  }
+  .zona-icono { inline-size: 1.05rem; block-size: 1.05rem; flex: none; color: var(--color); }
 
   .datos {
     display: grid;

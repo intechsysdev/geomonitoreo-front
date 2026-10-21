@@ -2,15 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BatteryWarning, Copy, Crosshair, ExternalLink, MapPinOff, RefreshCw, Route, Search, Signal, SignalZero, Wifi, X,
+  BatteryWarning, Copy, Crosshair, Eye, EyeOff, ExternalLink, Hexagon, MapPinOff, RefreshCw, Route, Search, Signal, SignalZero, Wifi, X,
 } from "lucide-react";
-import { localizarEquipo, obtenerEquipo, obtenerFlota, type Equipo } from "../api/flota";
-import { useConfiguracion, useEmpresaClave, useFlota, useGeocercas } from "../api/consultas";
+import { localizarEquipo, obtenerEquipo, obtenerGeocercasEquipo, type Equipo } from "../api/flota";
+import type { Geocerca } from "../api/geocercas";
+import { useConfiguracion, useEmpresaClave, useFlota } from "../api/consultas";
 import { Aviso, Bateria, Cargando, PuntoEstado } from "../componentes/Basicos";
 import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
 import { BuscadorDirecciones, type Lugar } from "../mapa/BuscadorDirecciones";
 import { CapaFlota, CapaGeocercas, elemento, encuadrar as encuadrarMapa, irA, marcador, quitarMarcadores, type Margen } from "../mapa/capas";
-import { distancia } from "../mapa/geo";
+import { distancia, poligonoDe } from "../mapa/geo";
 import type { FondoMapa } from "../mapa/estilos";
 import { useMapa } from "../mapa/useMapa";
 import {
@@ -55,16 +56,16 @@ export function Monitor() {
   const seleccionado = params.get("equipo");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busqueda, setBusqueda] = useState("");
-  const [verZonas, setVerZonas] = useState(true);
   const ahora = useAhora();
-  const queryClient = useQueryClient();
-  const empresa = useEmpresaClave();
 
   const configuracion = useConfiguracion();
   const configurado = configuracion.data?.mobiControlConfigurado ?? false;
   const flota = useFlota(configurado);
-  const geocercas = useGeocercas();
   const equipos = useMemo(() => flota.data?.equipos ?? [], [flota.data]);
+
+  // Geocercas: no se cargan las de la empresa. Se dibujan las que se eligen en el detalle del equipo.
+  const [zonasPintadas, setZonasPintadas] = useState<Geocerca[]>([]);
+  useEffect(() => setZonasPintadas([]), [seleccionado]);
 
   const elegir = useCallback(
     (id: string | null) => {
@@ -98,9 +99,21 @@ export function Monitor() {
   }, [capas, equipos]);
 
   useEffect(() => {
-    const activas = (geocercas.data ?? []).filter((g) => g.activa);
-    capas?.zonas.poner(verZonas ? activas : []);
-  }, [capas, geocercas.data, verZonas]);
+    capas?.zonas.poner(zonasPintadas);
+  }, [capas, zonasPintadas]);
+
+  // Al pintar una zona, se encuadra junto con el equipo.
+  const pintar = useCallback(
+    (zonas: Geocerca[], enfocar: Geocerca | null) => {
+      setZonasPintadas(zonas);
+      if (!mapa || !enfocar) return;
+      const puntos = poligonoDe(enfocar);
+      const e = equipos.find((x) => x.deviceId === seleccionado);
+      if (e?.latitud != null && e.longitud != null) puntos.push([e.longitud, e.latitud]);
+      encuadrarMapa(mapa, puntos, MARGEN_DETALLE, 17);
+    },
+    [mapa, equipos, seleccionado],
+  );
 
   // ---- Encuadre: la primera vez que llegan equipos, que se vean todos ----
   const encuadrado = useRef(false);
@@ -152,10 +165,10 @@ export function Monitor() {
     );
   }, [equipos, filtro, busqueda, ahora]);
 
-  const refrescar = useMutation({
-    mutationFn: () => obtenerFlota(true),
-    onSuccess: (datos) => queryClient.setQueryData(["flota", empresa], datos),
-  });
+  const refrescar = useMutation({ mutationFn: () => flota.refrescar() });
+
+  // Mientras llegan páginas, los números son de lo cargado: se marca con "+".
+  const cifra = (n: number) => (flota.completo ? String(n) : `${n}+`);
 
   // ---- Estados de la pantalla ----
   let superpuesto: React.ReactNode = null;
@@ -187,7 +200,11 @@ export function Monitor() {
             <h1>Monitor en vivo</h1>
             <p className="suave chico">
               {flota.data ? (
-                <>Actualizado {haceCuanto(flota.data.consultado, ahora)} · {equipos.length} equipos</>
+                flota.completo ? (
+                  <>Actualizado {haceCuanto(flota.data.consultado, ahora)} · {equipos.length} equipos</>
+                ) : (
+                  <>Cargando equipos… {equipos.length} hasta ahora</>
+                )
               ) : (
                 "Flota de MobiControl"
               )}
@@ -215,7 +232,7 @@ export function Monitor() {
               aria-pressed={filtro === f.id}
               onClick={() => setFiltro(f.id)}
             >
-              <span className="kpi-numero">{conteos[f.id]}</span>
+              <span className="kpi-numero">{cifra(conteos[f.id])}</span>
               <span className="kpi-nombre">{f.nombre}</span>
             </button>
           ))}
@@ -269,16 +286,14 @@ export function Monitor() {
         <DetalleEquipo
           deviceId={seleccionado}
           resumen={elegido}
-          geocercas={geocercas.data ?? []}
+          zonasPintadas={zonasPintadas}
+          alPintar={pintar}
+          alRefrescarFlota={flota.refrescar}
           alCerrar={() => elegir(null)}
         />
       )}
 
       <div className="mapa-esquina">
-        <label className="interruptor vidrio">
-          <input type="checkbox" checked={verZonas} onChange={(e) => setVerZonas(e.target.checked)} />
-          Geocercas
-        </label>
         <ControlesMapa mapa={mapa} fondo={fondo} alCambiarFondo={setFondo} alEncuadrar={encuadrar} />
       </div>
     </div>
@@ -287,6 +302,9 @@ export function Monitor() {
 
 /** Lo que tapan el panel de la flota (izquierda) y los controles: el encuadre no los usa. */
 const MARGEN: Margen = { top: 80, bottom: 60, left: 420, right: 80 };
+
+/** Con el detalle abierto, a la derecha también hay un cajón. */
+const MARGEN_DETALLE: Margen = { top: 80, bottom: 60, left: 420, right: 440 };
 
 /** Los equipos más cerca de un lugar buscado, en línea recta. */
 function EquiposCerca({ lugar, equipos, alElegir }: { lugar: Lugar; equipos: Equipo[]; alElegir: (id: string) => void }) {
@@ -325,18 +343,28 @@ function EquiposCerca({ lugar, equipos, alElegir }: { lugar: Lugar; equipos: Equ
 function DetalleEquipo({
   deviceId,
   resumen,
-  geocercas,
+  zonasPintadas,
+  alPintar,
+  alRefrescarFlota,
   alCerrar,
 }: {
   deviceId: string;
   resumen: Equipo | null;
-  geocercas: { geocercaUid: string; nombre: string; color: string }[];
+  zonasPintadas: Geocerca[];
+  alPintar: (zonas: Geocerca[], enfocar: Geocerca | null) => void;
+  alRefrescarFlota: () => Promise<void>;
   alCerrar: () => void;
 }) {
   const navigate = useNavigate();
   const empresa = useEmpresaClave();
   const queryClient = useQueryClient();
   const detalle = useQuery({ queryKey: ["equipo", empresa, deviceId], queryFn: () => obtenerEquipo(deviceId), staleTime: 20_000 });
+  // Las zonas del equipo: en las que está y las que tiene cerca, según su última posición.
+  const zonasEquipo = useQuery({
+    queryKey: ["geocercas-equipo", empresa, deviceId],
+    queryFn: () => obtenerGeocercasEquipo(deviceId),
+    staleTime: 60_000,
+  });
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
 
@@ -347,7 +375,8 @@ function DetalleEquipo({
       // La posición nueva llega en unos segundos: se vuelve a preguntar sin esperar al refresco.
       window.setTimeout(() => {
         void queryClient.invalidateQueries({ queryKey: ["equipo", empresa, deviceId] });
-        void obtenerFlota(true).then((d) => queryClient.setQueryData(["flota", empresa], d));
+        void queryClient.invalidateQueries({ queryKey: ["geocercas-equipo", empresa, deviceId] });
+        void alRefrescarFlota();
       }, 20_000);
     },
     onError: (e: Error) => setMensaje(e.message),
@@ -355,7 +384,14 @@ function DetalleEquipo({
 
   const e = detalle.data ?? resumen;
   const estado = e ? estadoDe(e) : null;
-  const zonas = (e?.geocercas ?? []).map((uid) => geocercas.find((g) => g.geocercaUid === uid)).filter(Boolean);
+  const pintadas = new Set(zonasPintadas.map((z) => z.geocercaUid));
+
+  const alternar = (zona: Geocerca) => {
+    if (pintadas.has(zona.geocercaUid)) alPintar(zonasPintadas.filter((z) => z.geocercaUid !== zona.geocercaUid), null);
+    else alPintar([...zonasPintadas, zona], zona);
+  };
+
+  const todas = [...(zonasEquipo.data?.dentro ?? []), ...(zonasEquipo.data?.cercanas.map((c) => c.geocerca) ?? [])];
 
   return (
     <aside className="detalle-equipo vidrio" aria-label="Detalle del equipo">
@@ -425,14 +461,39 @@ function DetalleEquipo({
               <p className="suave chico">{e.tieneGps ? "El equipo no ha reportado posición." : "Esta plataforma no reporta posición."}</p>
             )}
 
-            {zonas.length > 0 && (
-              <div className="zonas">
-                {zonas.map((z) => (
-                  <span key={z!.geocercaUid} className="insignia" style={{ "--color": z!.color } as React.CSSProperties}>
-                    ● {z!.nombre}
-                  </span>
+          </section>
+
+          <section className="detalle-bloque">
+            <div className="bloque-titulo">
+              <h3>Geocercas</h3>
+              {todas.length > 1 && (
+                <button
+                  type="button"
+                  className="boton fantasma chico"
+                  onClick={() => (pintadas.size ? alPintar([], null) : alPintar(todas, null))}
+                >
+                  {pintadas.size ? "Ocultar todas" : "Ver todas"}
+                </button>
+              )}
+            </div>
+            {zonasEquipo.isLoading ? (
+              <p className="suave chico">Buscando las zonas del equipo…</p>
+            ) : zonasEquipo.isError ? (
+              <p className="suave chico">{(zonasEquipo.error as Error).message}</p>
+            ) : !zonasEquipo.data?.conPosicion ? (
+              <p className="suave chico">Sin posición, no se puede saber en qué zona está.</p>
+            ) : todas.length === 0 ? (
+              <p className="suave chico">No está en ninguna geocerca ni tiene una a menos de 10 km.</p>
+            ) : (
+              <ul className="zonas-equipo">
+                {zonasEquipo.data.dentro.map((z) => (
+                  <ZonaEquipo key={z.geocercaUid} zona={z} detalle="Dentro" pintada={pintadas.has(z.geocercaUid)} alAlternar={alternar} />
                 ))}
-              </div>
+                {zonasEquipo.data.cercanas.map(({ geocerca: z, distanciaMetros }) => (
+                  <ZonaEquipo key={z.geocercaUid} zona={z} detalle={`A ${metrosLegibles(distanciaMetros)}`}
+                    pintada={pintadas.has(z.geocercaUid)} alAlternar={alternar} />
+                ))}
+              </ul>
             )}
           </section>
 
@@ -469,6 +530,34 @@ function DetalleEquipo({
         </>
       )}
     </aside>
+  );
+}
+
+const metrosLegibles = (m: number) =>
+  m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toLocaleString("es-CO", { maximumFractionDigits: 1 })} km`;
+
+/** Una zona en el detalle del equipo: al tocarla se pinta en el mapa (o se quita). */
+function ZonaEquipo({ zona, detalle, pintada, alAlternar }: {
+  zona: Geocerca; detalle: string; pintada: boolean; alAlternar: (zona: Geocerca) => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        className="item-zona"
+        aria-pressed={pintada}
+        onClick={() => alAlternar(zona)}
+        style={{ "--color": zona.color } as React.CSSProperties}
+        title={pintada ? "Quitar del mapa" : "Ver en el mapa"}
+      >
+        <Hexagon aria-hidden className="zona-icono" />
+        <span className="item-texto">
+          <span className="item-nombre">{zona.nombre}</span>
+          <span className="item-sub">{detalle}{zona.tipo === "CIRCULO" && zona.radioMetros ? ` · radio ${metrosLegibles(zona.radioMetros)}` : ""}</span>
+        </span>
+        {pintada ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+      </button>
+    </li>
   );
 }
 

@@ -3,13 +3,14 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CircleDot, Clock, Flag, Gauge, LogIn, LogOut, Pause, Play, Route as IconoRuta, Timer, Zap } from "lucide-react";
 import { obtenerRecorrido, type PuntoRecorrido, type Recorrido } from "../api/flota";
-import { useEmpresaClave, useFlota, useGeocercas } from "../api/consultas";
+import { useEmpresaClave, useFlota } from "../api/consultas";
 import { Aviso, Cargando, PuntoEstado } from "../componentes/Basicos";
 import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
 import { BuscadorDirecciones } from "../mapa/BuscadorDirecciones";
 import { aLatLng, CapaGeocercas, elemento, encuadrar as encuadrarMapa, marcador, quitarMarcadores, type Margen } from "../mapa/capas";
 import type { FondoMapa } from "../mapa/estilos";
 import { useMapa } from "../mapa/useMapa";
+import { puntoEnCamino, rutaPorVias, type RutaPorVias } from "../mapa/rutas";
 import { duracion, formatoFechaHora, formatoHora } from "../formato";
 
 type Rango = "hoy" | "ayer" | "7dias" | "personalizado";
@@ -51,34 +52,38 @@ function colorVelocidad(kmh: number): string {
   return "rgb(220 38 38)";
 }
 
+/** El camino de cada tramo: por las vías si ya se trazó, si no la recta entre los dos puntos. */
+function caminoDe(puntos: PuntoRecorrido[], ruta: RutaPorVias | null, i: number): google.maps.LatLngLiteral[] {
+  return ruta?.caminos[i]?.length
+    ? ruta.caminos[i]
+    : [{ lat: puntos[i - 1].latitud, lng: puntos[i - 1].longitud }, { lat: puntos[i].latitud, lng: puntos[i].longitud }];
+}
+
 /**
  * La ruta en tramos de un solo color. Las velocidades se redondean de a 5 km/h y los tramos
  * seguidos del mismo color se unen: una línea por color en vez de una por cada par de puntos.
  */
-function tramos(puntos: PuntoRecorrido[]): { color: string; camino: google.maps.LatLngLiteral[] }[] {
+function tramos(puntos: PuntoRecorrido[], ruta: RutaPorVias | null): { color: string; camino: google.maps.LatLngLiteral[] }[] {
   const resultado: { color: string; camino: google.maps.LatLngLiteral[] }[] = [];
   for (let i = 1; i < puntos.length; i++) {
     const color = colorVelocidad(Math.round((puntos[i].velocidadKmh ?? 0) / 5) * 5);
-    const desde = { lat: puntos[i - 1].latitud, lng: puntos[i - 1].longitud };
-    const hasta = { lat: puntos[i].latitud, lng: puntos[i].longitud };
+    const camino = caminoDe(puntos, ruta, i);
     const ultimo = resultado[resultado.length - 1];
-    if (ultimo?.color === color) ultimo.camino.push(hasta);
-    else resultado.push({ color, camino: [desde, hasta] });
+    if (ultimo?.color === color) ultimo.camino.push(...camino.slice(1));
+    else resultado.push({ color, camino: [...camino] });
   }
   return resultado;
 }
 
-/** Posición en el instante t, interpolada entre los dos puntos que lo rodean. */
-function posicionEn(puntos: PuntoRecorrido[], tiempos: number[], t: number): [number, number] | null {
+/** Posición en el instante t: avanza por el camino del tramo que lo contiene (por las vías si lo hay). */
+function posicionEn(puntos: PuntoRecorrido[], tiempos: number[], t: number, ruta: RutaPorVias | null): [number, number] | null {
   if (puntos.length === 0) return null;
   if (t <= tiempos[0]) return [puntos[0].longitud, puntos[0].latitud];
   for (let i = 1; i < puntos.length; i++) {
     if (t <= tiempos[i]) {
       const f = (t - tiempos[i - 1]) / Math.max(1, tiempos[i] - tiempos[i - 1]);
-      return [
-        puntos[i - 1].longitud + (puntos[i].longitud - puntos[i - 1].longitud) * f,
-        puntos[i - 1].latitud + (puntos[i].latitud - puntos[i - 1].latitud) * f,
-      ];
+      const p = puntoEnCamino(caminoDe(puntos, ruta, i), f);
+      return [p.lng, p.lat];
     }
   }
   const ultimo = puntos[puntos.length - 1];
@@ -97,7 +102,6 @@ export function Recorridos() {
   const empresa = useEmpresaClave();
 
   const flota = useFlota();
-  const geocercas = useGeocercas();
   const equipos = useMemo(
     () => (flota.data?.equipos ?? []).filter((e) => e.tieneGps).sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [flota.data],
@@ -130,9 +134,26 @@ export function Recorridos() {
     };
   }, [mapa]);
 
+  // Solo las zonas por las que entró o salió: vienen con el recorrido.
   useEffect(() => {
-    zonas?.poner((geocercas.data ?? []).filter((g) => g.activa));
-  }, [zonas, geocercas.data]);
+    zonas?.poner(datos?.geocercas ?? []);
+  }, [zonas, datos]);
+
+  // ---- Ruta por las vías: se traza aparte y reemplaza las rectas cuando llega ----
+  const [ruta, setRuta] = useState<RutaPorVias | null>(null);
+  const [trazando, setTrazando] = useState(false);
+
+  useEffect(() => {
+    setRuta(null);
+    if (!mapa || puntos.length < 2) return;
+    let vigente = true;
+    setTrazando(true);
+    rutaPorVias(puntos)
+      .then((r) => { if (vigente) setRuta(r); })
+      .catch(() => { /* sin ruta por las vías: quedan las rectas */ })
+      .finally(() => { if (vigente) setTrazando(false); });
+    return () => { vigente = false; };
+  }, [mapa, puntos]);
 
   // La ruta, con su sombra, y los hitos: inicio, fin, paradas numeradas y entradas o salidas de zonas.
   useEffect(() => {
@@ -140,14 +161,17 @@ export function Recorridos() {
 
     const sombra = new google.maps.Polyline({
       map: mapa,
-      path: puntos.map((p) => ({ lat: p.latitud, lng: p.longitud })),
+      path: puntos.slice(1).flatMap((_, k) => {
+        const camino = caminoDe(puntos, ruta, k + 1);
+        return k === 0 ? camino : camino.slice(1);
+      }),
       strokeColor: "#1f1f1d",
       strokeOpacity: 0.25,
       strokeWeight: 9,
       clickable: false,
       zIndex: 5,
     });
-    const lineas = tramos(puntos).map(
+    const lineas = tramos(puntos, ruta).map(
       (t) => new google.maps.Polyline({ map: mapa, path: t.camino, strokeColor: t.color, strokeOpacity: 1, strokeWeight: 5, clickable: false, zIndex: 6 }),
     );
 
@@ -175,7 +199,7 @@ export function Recorridos() {
       lineas.forEach((l) => l.setMap(null));
       quitarMarcadores(...hitos);
     };
-  }, [mapa, puntos, datos]);
+  }, [mapa, puntos, datos, ruta]);
 
   const encuadrar = useCallback(() => {
     if (mapa) encuadrarMapa(mapa, puntos.map((p) => [p.longitud, p.latitud]), MARGEN, 16);
@@ -223,7 +247,7 @@ export function Recorridos() {
   }, [reproduciendo, velocidad, fin]);
 
   useEffect(() => {
-    const posicion = posicionEn(puntos, tiempos, t);
+    const posicion = posicionEn(puntos, tiempos, t, ruta);
     const actual = vehiculo.current;
     if (!mapa || !posicion) {
       if (actual) actual.map = null;
@@ -237,7 +261,7 @@ export function Recorridos() {
     } else {
       actual.position = aLatLng(posicion);
     }
-  }, [mapa, puntos, tiempos, t]);
+  }, [mapa, puntos, tiempos, t, ruta]);
 
   useEffect(() => () => {
     if (vehiculo.current) vehiculo.current.map = null;
@@ -268,6 +292,8 @@ export function Recorridos() {
             onChange={(e) => setParams(e.target.value ? { equipo: e.target.value } : {}, { replace: true })}
           >
             <option value="">{flota.isLoading ? "Cargando equipos…" : "Elige un equipo"}</option>
+            {/* La flota llega por páginas: el equipo elegido puede no estar todavía en la lista. */}
+            {deviceId && !elegido && <option value={deviceId}>{flota.completo ? deviceId : "Cargando el equipo…"}</option>}
             {equipos.map((e) => (
               <option key={e.deviceId} value={e.deviceId}>{e.nombre}{e.modelo ? ` · ${e.modelo}` : ""}</option>
             ))}
@@ -313,6 +339,9 @@ export function Recorridos() {
               <Estadistica Icono={Zap} valor={`${est.velocidadMaximaKmh} km/h`} nombre="Vel. máxima" />
               <Estadistica Icono={CircleDot} valor={String(est.paradas)} nombre="Paradas" />
             </div>
+
+            {trazando && <p className="suave chico">Trazando la ruta por las vías…</p>}
+            {ruta?.aviso && <Aviso tipo="alerta">{ruta.aviso}</Aviso>}
 
             <div className="leyenda-velocidad" aria-hidden>
               <span>0</span><div className="degradado" /><span>110+ km/h</span>
