@@ -68,6 +68,7 @@ export function Geocercas() {
   const queryClient = useQueryClient();
 
   const geocercas = useListaGeocercas();
+  // De referencia para dibujar: los primeros 100 equipos, no la flota entera.
   const flota = useFlota();
   const lista = useMemo(() => geocercas.data?.geocercas ?? [], [geocercas.data]);
 
@@ -77,12 +78,6 @@ export function Geocercas() {
   const [formulario, setFormulario] = useState<Formulario | null>(null);
   const [aBorrar, setABorrar] = useState<Geocerca | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const dentroPorZona = useMemo(() => {
-    const conteo = new Map<string, number>();
-    for (const e of flota.data?.equipos ?? []) for (const uid of e.geocercas) conteo.set(uid, (conteo.get(uid) ?? 0) + 1);
-    return conteo;
-  }, [flota.data]);
 
   // ---- Capas ----
   const [capas, setCapas] = useState<{
@@ -396,9 +391,6 @@ export function Geocercas() {
                         <CloudOff aria-hidden /> No está
                       </span>
                     )}
-                    <span className="insignia" data-tono={dentroPorZona.get(g.geocercaUid) ? "marca" : undefined} title="Equipos dentro ahora">
-                      {dentroPorZona.get(g.geocercaUid) ?? 0} dentro
-                    </span>
                   </button>
                   {elegida === g.geocercaUid && !g.enMobiControl && (
                     <div className="zona-acciones">

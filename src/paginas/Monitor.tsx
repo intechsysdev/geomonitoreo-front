@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BatteryWarning, Copy, Crosshair, Eye, EyeOff, ExternalLink, Hexagon, MapPinOff, RefreshCw, Route, Search, Signal, SignalZero, Wifi, X,
 } from "lucide-react";
-import { localizarEquipo, obtenerEquipo, obtenerGeocercasEquipo, type Equipo } from "../api/flota";
+import { localizarEquipo, obtenerEquipo, obtenerGeocercasEquipo, type Equipo, type EstadoFiltro, type ResumenFlota } from "../api/flota";
 import type { Geocerca } from "../api/geocercas";
-import { useConfiguracion, useEmpresaClave, useFlota } from "../api/consultas";
+import { useConPausa, useConfiguracion, useEmpresaClave, useFlota, useResumenFlota } from "../api/consultas";
 import { Aviso, Bateria, Cargando, PuntoEstado } from "../componentes/Basicos";
 import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
 import { BuscadorDirecciones, type Lugar } from "../mapa/BuscadorDirecciones";
@@ -14,29 +14,18 @@ import { CapaFlota, CapaGeocercas, elemento, encuadrar as encuadrarMapa, irA, ma
 import { distancia, poligonoDe } from "../mapa/geo";
 import type { FondoMapa } from "../mapa/estilos";
 import { useMapa } from "../mapa/useMapa";
-import {
-  bateriaBaja, coordenadas, estadoDe, formatoFechaHora, grupoCorto, haceCuanto, NOMBRE_ESTADO, type EstadoEquipo,
-} from "../formato";
+import { bateriaBaja, coordenadas, estadoDe, formatoFechaHora, grupoCorto, haceCuanto, NOMBRE_ESTADO } from "../formato";
 
-type Filtro = "todos" | EstadoEquipo | "bateria" | "sin-ubicacion";
+type Filtro = "todos" | EstadoFiltro;
 
-const FILTROS: { id: Filtro; nombre: string }[] = [
-  { id: "todos", nombre: "Todos" },
-  { id: "en-linea", nombre: "En línea" },
-  { id: "inactivo", nombre: "Inactivos" },
-  { id: "sin-senal", nombre: "Sin señal" },
-  { id: "bateria", nombre: "Batería baja" },
-  { id: "sin-ubicacion", nombre: "Sin ubicación" },
+/** Los totales son de toda la consola (los cuenta MobiControl), no de lo cargado. */
+const FILTROS: { id: Filtro; nombre: string; total: keyof ResumenFlota }[] = [
+  { id: "todos", nombre: "Todos", total: "total" },
+  { id: "en-linea", nombre: "En línea", total: "enLinea" },
+  { id: "inactivo", nombre: "Inactivos", total: "inactivos" },
+  { id: "sin-senal", nombre: "Sin señal", total: "sinSenal" },
+  { id: "bateria", nombre: "Batería baja", total: "bateriaBaja" },
 ];
-
-function cumple(e: Equipo, filtro: Filtro, ahora: number) {
-  switch (filtro) {
-    case "todos": return true;
-    case "bateria": return bateriaBaja(e);
-    case "sin-ubicacion": return e.latitud === null;
-    default: return estadoDe(e, ahora) === filtro;
-  }
-}
 
 /** El reloj de "hace X" avanza solo, sin volver a pedir datos. */
 function useAhora(cadaMs = 15_000) {
@@ -60,8 +49,27 @@ export function Monitor() {
 
   const configuracion = useConfiguracion();
   const configurado = configuracion.data?.mobiControlConfigurado ?? false;
-  const flota = useFlota(configurado);
-  const equipos = useMemo(() => flota.data?.equipos ?? [], [flota.data]);
+  const empresa = useEmpresaClave();
+
+  // Se busca y filtra en MobiControl: solo se traen 100 equipos a la vez.
+  const buscar = useConPausa(busqueda.trim());
+  const estado = filtro === "todos" ? null : filtro;
+  const flota = useFlota({ activa: configurado, filtro: { buscar, estado } });
+  const resumen = useResumenFlota(configurado);
+  const cargados = useMemo(() => flota.data?.equipos ?? [], [flota.data]);
+
+  // El equipo abierto puede no estar entre los cargados (llega por enlace desde Dispositivos o es
+  // de otra búsqueda): su detalle trae la posición y se suma al mapa.
+  const detalleElegido = useQuery({
+    queryKey: ["equipo", empresa, seleccionado],
+    queryFn: () => obtenerEquipo(seleccionado!),
+    enabled: !!seleccionado,
+    staleTime: 20_000,
+  });
+  const equipos = useMemo(() => {
+    const extra = detalleElegido.data;
+    return extra && !cargados.some((e) => e.deviceId === extra.deviceId) ? [...cargados, extra] : cargados;
+  }, [cargados, detalleElegido.data]);
 
   // Geocercas: no se cargan las de la empresa. Se dibujan las que se eligen en el detalle del equipo.
   const [zonasPintadas, setZonasPintadas] = useState<Geocerca[]>([]);
@@ -115,18 +123,21 @@ export function Monitor() {
     [mapa, equipos, seleccionado],
   );
 
-  // ---- Encuadre: la primera vez que llegan equipos, que se vean todos ----
+  // ---- Encuadre: cuando llegan los primeros puntos (y con cada búsqueda nueva), que se vean todos ----
   const encuadrado = useRef(false);
+  useEffect(() => {
+    encuadrado.current = false;
+  }, [buscar, estado]);
   const encuadrar = useCallback(() => {
     const puntos = equipos.filter((e) => e.latitud !== null).map((e) => [e.longitud!, e.latitud!] as [number, number]);
     if (mapa) encuadrarMapa(mapa, puntos, MARGEN, 14);
   }, [mapa, equipos]);
 
   useEffect(() => {
-    if (encuadrado.current || !mapa || equipos.length === 0 || seleccionado) return;
+    if (encuadrado.current || !mapa || flota.buscando || seleccionado || !equipos.some((e) => e.latitud !== null)) return;
     encuadrado.current = true;
     encuadrar();
-  }, [mapa, equipos, encuadrar, seleccionado]);
+  }, [mapa, equipos, encuadrar, seleccionado, flota.buscando]);
 
   // ---- Equipo elegido: centrarlo y marcarlo con un pulso ----
   const elegido = equipos.find((e) => e.deviceId === seleccionado) ?? null;
@@ -149,26 +160,9 @@ export function Monitor() {
   }, [mapa, elegido]);
 
   // ---- Lista ----
-  const conteos = useMemo(() => {
-    const c = Object.fromEntries(FILTROS.map((f) => [f.id, 0])) as Record<Filtro, number>;
-    for (const e of equipos) for (const f of FILTROS) if (cumple(e, f.id, ahora)) c[f.id]++;
-    return c;
-  }, [equipos, ahora]);
-
-  const visibles = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
-    return equipos.filter(
-      (e) =>
-        cumple(e, filtro, ahora) &&
-        (!texto || [e.nombre, e.modelo, e.fabricante, e.imei, e.telefono, e.serial, e.grupo]
-          .some((v) => v?.toLowerCase().includes(texto))),
-    );
-  }, [equipos, filtro, busqueda, ahora]);
-
   const refrescar = useMutation({ mutationFn: () => flota.refrescar() });
-
-  // Mientras llegan páginas, los números son de lo cargado: se marca con "+".
-  const cifra = (n: number) => (flota.completo ? String(n) : `${n}+`);
+  const filtrando = !!buscar || !!estado;
+  const restantes = flota.total !== null ? Math.max(0, flota.total - cargados.length) : 0;
 
   // ---- Estados de la pantalla ----
   let superpuesto: React.ReactNode = null;
@@ -199,12 +193,12 @@ export function Monitor() {
           <div>
             <h1>Monitor en vivo</h1>
             <p className="suave chico">
-              {flota.data ? (
-                flota.completo ? (
-                  <>Actualizado {haceCuanto(flota.data.consultado, ahora)} · {equipos.length} equipos</>
-                ) : (
-                  <>Cargando equipos… {equipos.length} hasta ahora</>
-                )
+              {flota.data && flota.total !== null ? (
+                <>
+                  Actualizado {haceCuanto(flota.data.consultado, ahora)} ·{" "}
+                  {filtrando ? `${flota.total.toLocaleString("es-CO")} coinciden` : `${flota.total.toLocaleString("es-CO")} equipos`}
+                  {restantes > 0 && `, se muestran ${cargados.length}`}
+                </>
               ) : (
                 "Flota de MobiControl"
               )}
@@ -234,7 +228,9 @@ export function Monitor() {
               aria-pressed={filtro === f.id}
               onClick={() => setFiltro(f.id)}
             >
-              <span className="kpi-numero">{cifra(conteos[f.id])}</span>
+              <span className="kpi-numero">
+                {resumen.data ? (resumen.data[f.total] as number).toLocaleString("es-CO") : "–"}
+              </span>
               <span className="kpi-nombre">{f.nombre}</span>
             </button>
           ))}
@@ -246,7 +242,7 @@ export function Monitor() {
           <input
             className="campo"
             type="search"
-            placeholder="Nombre, IMEI, teléfono, grupo…"
+            placeholder="Nombre, modelo o serial…"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
@@ -255,9 +251,13 @@ export function Monitor() {
         {superpuesto ?? (flota.isLoading ? (
           <Cargando texto="Consultando la flota en MobiControl…" />
         ) : (
-          <ul className="lista-equipos">
-            {visibles.length === 0 && <li className="vacio-lista suave chico">Ningún equipo coincide.</li>}
-            {visibles.map((e) => (
+          <ul className="lista-equipos" aria-busy={flota.buscando || undefined} data-buscando={flota.buscando || undefined}>
+            {cargados.length === 0 && (
+              <li className="vacio-lista suave chico">
+                {filtrando ? "Ningún equipo coincide. Se busca por nombre, modelo, fabricante o serial." : "La consola no tiene equipos."}
+              </li>
+            )}
+            {cargados.map((e) => (
               <li key={e.deviceId}>
                 <button
                   type="button"
@@ -280,6 +280,15 @@ export function Monitor() {
                 </button>
               </li>
             ))}
+            {flota.hayMas && (
+              <li className="cargar-mas">
+                <button type="button" className="boton fantasma ancho-completo" disabled={flota.cargandoMas} onClick={flota.cargarMas}>
+                  {flota.cargandoMas
+                    ? "Cargando…"
+                    : `Cargar ${Math.min(100, restantes).toLocaleString("es-CO")} más (quedan ${restantes.toLocaleString("es-CO")})`}
+                </button>
+              </li>
+            )}
           </ul>
         ))}
       </aside>

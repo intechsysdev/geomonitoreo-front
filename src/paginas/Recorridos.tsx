@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CircleDot, Clock, Flag, Gauge, LogIn, LogOut, Pause, Play, Route as IconoRuta, Timer, Zap } from "lucide-react";
-import { obtenerRecorrido, type PuntoRecorrido, type Recorrido } from "../api/flota";
-import { useEmpresaClave, useFlota } from "../api/consultas";
+import { obtenerEquipo, obtenerRecorrido, type PuntoRecorrido, type Recorrido } from "../api/flota";
+import { useEmpresaClave } from "../api/consultas";
 import { Aviso, Cargando, PuntoEstado } from "../componentes/Basicos";
+import { SelectorEquipo } from "../componentes/SelectorEquipo";
 import { AvisoMapa, ControlesMapa } from "../mapa/ControlesMapa";
 import { BuscadorDirecciones } from "../mapa/BuscadorDirecciones";
 import { aLatLng, CapaGeocercas, elemento, encuadrar as encuadrarMapa, marcador, quitarMarcadores, type Margen } from "../mapa/capas";
@@ -101,11 +102,13 @@ export function Recorridos() {
   const [hastaTexto, setHastaTexto] = useState(() => aLocal(new Date()));
   const empresa = useEmpresaClave();
 
-  const flota = useFlota();
-  const equipos = useMemo(
-    () => (flota.data?.equipos ?? []).filter((e) => e.tieneGps).sort((a, b) => a.nombre.localeCompare(b.nombre)),
-    [flota.data],
-  );
+  // Solo el equipo elegido: la lista para elegir se busca en MobiControl a medida que se escribe.
+  const equipo = useQuery({
+    queryKey: ["equipo", empresa, deviceId],
+    queryFn: () => obtenerEquipo(deviceId),
+    enabled: !!deviceId,
+    staleTime: 60_000,
+  });
 
   const [desde, hasta] = useMemo(() => rangoDe(tipoRango, desdeTexto, hastaTexto), [tipoRango, desdeTexto, hastaTexto]);
   const rangoValido = !Number.isNaN(desde.getTime()) && !Number.isNaN(hasta.getTime()) && hasta > desde;
@@ -267,7 +270,7 @@ export function Recorridos() {
     if (vehiculo.current) vehiculo.current.map = null;
   }, []);
 
-  const elegido = equipos.find((e) => e.deviceId === deviceId);
+  const elegido = equipo.data;
   const est = datos?.estadisticas;
 
   return (
@@ -284,21 +287,13 @@ export function Recorridos() {
           </div>
         </div>
 
-        <label className="etiqueta">
-          Equipo
-          <select
-            className="campo"
-            value={deviceId}
-            onChange={(e) => setParams(e.target.value ? { equipo: e.target.value } : {}, { replace: true })}
-          >
-            <option value="">{flota.isLoading ? "Cargando equipos…" : "Elige un equipo"}</option>
-            {/* La flota llega por páginas: el equipo elegido puede no estar todavía en la lista. */}
-            {deviceId && !elegido && <option value={deviceId}>{flota.completo ? deviceId : "Cargando el equipo…"}</option>}
-            {equipos.map((e) => (
-              <option key={e.deviceId} value={e.deviceId}>{e.nombre}{e.modelo ? ` · ${e.modelo}` : ""}</option>
-            ))}
-          </select>
-        </label>
+        <SelectorEquipo
+          etiqueta="Equipo"
+          valor={deviceId}
+          nombreValor={elegido ? `${elegido.nombre}${elegido.modelo ? ` · ${elegido.modelo}` : ""}` : null}
+          alElegir={(id) => setParams({ equipo: id }, { replace: true })}
+          soloConGps
+        />
 
         <div className="segmentado ancho-completo" role="group" aria-label="Rango">
           {([["hoy", "Hoy"], ["ayer", "Ayer"], ["7dias", "7 días"], ["personalizado", "Rango"]] as [Rango, string][]).map(([id, nombre]) => (

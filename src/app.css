@@ -1024,6 +1024,54 @@
     & .item-nombre { flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   }
 
+  /* La flota se trae de a 100: el resto, a pedido. */
+  .cargar-mas {
+    padding-block: 0.5rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Resultados de la búsqueda anterior mientras llegan los nuevos. */
+  [data-buscando] {
+    opacity: 0.55;
+    transition: opacity 0.15s;
+  }
+
+  /* Elegir un equipo buscándolo en MobiControl (Recorridos). */
+  .selector-equipo {
+    position: relative;
+    display: grid;
+    gap: 0.35rem;
+
+    & .buscador .campo { inline-size: 100%; padding-inline-end: 2.4rem; }
+    & .buscador > button { position: absolute; inset-inline-end: 0.3rem; inset-block-start: 50%; translate: 0 -50%; }
+    & .buscador > button svg { position: static; translate: none; }
+    & input[data-elegido]::placeholder { color: var(--tinta); opacity: 1; font-weight: 600; }
+  }
+
+  .selector-opciones {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(100% + 0.3rem);
+    z-index: 30;
+    max-block-size: min(22rem, 55dvh);
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.3rem;
+    list-style: none;
+    border: 1px solid var(--linea);
+    border-radius: var(--radio-chico);
+    background: var(--superficie);
+    box-shadow: var(--sombra-alta);
+    scrollbar-width: thin;
+
+    & [role="option"] { cursor: pointer; }
+    & [data-activo] { background: color-mix(in oklab, var(--tinta) 7%, transparent); }
+    & [aria-selected="true"] .item-nombre { font-weight: 700; }
+  }
+
+  .selector-nota { padding: 0.6rem 0.5rem; }
+
   @media (width < 760px) {
     .marco { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
     .riel {

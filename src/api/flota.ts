@@ -25,18 +25,38 @@ export interface Equipo {
   geocercas: string[];
 }
 
-export interface Flota {
-  equipos: Equipo[];
-  consultado: string;
-}
-
-/** Una página de la flota, ordenada por nombre. Los equipos vienen sin posición. */
+/** Una página de la flota, buscada y ordenada en MobiControl. Los equipos vienen sin posición. */
 export interface PaginaFlota {
   equipos: Equipo[];
   skip: number;
   take: number;
-  /** La página vino llena: puede haber más equipos después. */
+  /** Cuántos equipos cumplen la búsqueda en toda la consola. */
+  total: number;
   hayMas: boolean;
+  consultado: string;
+}
+
+/** Estados que la consola sabe filtrar. */
+export type EstadoFiltro = "en-linea" | "inactivo" | "sin-senal" | "bateria";
+
+export type OrdenFlota = "nombre" | "estado" | "modelo" | "bateria" | "ultimoReporte";
+
+/** Qué equipos traer: se busca, filtra y ordena en MobiControl, no en el navegador. */
+export interface FiltroFlota {
+  /** Dentro del nombre, modelo, fabricante, serial o DeviceId. */
+  buscar?: string;
+  estado?: EstadoFiltro | null;
+  orden?: OrdenFlota;
+  desc?: boolean;
+}
+
+/** Cuántos equipos hay en cada estado, en toda la consola. */
+export interface ResumenFlota {
+  total: number;
+  enLinea: number;
+  inactivos: number;
+  sinSenal: number;
+  bateriaBaja: number;
   consultado: string;
 }
 
@@ -120,9 +140,6 @@ export interface ConfiguracionFlota {
 
 export const obtenerConfiguracion = () => obtenerJson<ConfiguracionFlota>("/api/v1/flota/configuracion");
 
-export const obtenerFlota = (refrescar = false) =>
-  obtenerJson<Flota>(`/api/v1/flota${refrescar ? "?refrescar=true" : ""}`);
-
 export const obtenerEquipo = (deviceId: string) =>
   obtenerJson<DetalleEquipo>(`/api/v1/dispositivos/${encodeURIComponent(deviceId)}`);
 
@@ -138,8 +155,26 @@ export const localizarEquipo = (deviceId: string) =>
 /** Equipos por página: los que se muestran sin esperar y se ubican en unos segundos. */
 export const TAMANO_PAGINA = 100;
 
-export const obtenerPaginaEquipos = (skip: number, refrescar = false) =>
-  obtenerJson<PaginaFlota>(`/api/v1/flota/equipos?skip=${skip}&take=${TAMANO_PAGINA}${refrescar ? "&refrescar=true" : ""}`);
+function parametros(filtro: FiltroFlota, extra: Record<string, string | number | boolean | undefined> = {}) {
+  const q = new URLSearchParams();
+  const buscar = filtro.buscar?.trim();
+  if (buscar) q.set("buscar", buscar);
+  if (filtro.estado) q.set("estado", filtro.estado);
+  if (filtro.orden && filtro.orden !== "nombre") q.set("orden", filtro.orden);
+  if (filtro.desc) q.set("desc", "true");
+  for (const [k, v] of Object.entries(extra)) if (v !== undefined && v !== false) q.set(k, String(v));
+  return q.toString();
+}
+
+export const obtenerPaginaEquipos = (filtro: FiltroFlota, skip: number, refrescar = false) =>
+  obtenerJson<PaginaFlota>(`/api/v1/flota/equipos?${parametros(filtro, { skip, take: TAMANO_PAGINA, refrescar })}`);
+
+export const obtenerResumenFlota = (refrescar = false) =>
+  obtenerJson<ResumenFlota>(`/api/v1/flota/resumen${refrescar ? "?refrescar=true" : ""}`);
+
+/** Todos los equipos que cumplen el filtro, para exportar. Con la posición que ya se conozca. */
+export const exportarEquipos = (filtro: FiltroFlota) =>
+  obtenerJson<Equipo[]>(`/api/v1/flota/equipos/exportar?${parametros(filtro)}`);
 
 export const obtenerUbicaciones = (deviceIds: string[], refrescar = false) =>
   enviarJson<UbicacionEquipo[]>(`/api/v1/flota/ubicaciones${refrescar ? "?refrescar=true" : ""}`, { deviceIds });
