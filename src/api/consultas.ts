@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useSesion } from "../sesion/SesionContexto";
 import {
   obtenerConfiguracion, obtenerPaginaEquipos, obtenerUbicaciones, type Equipo, type PaginaFlota, type UbicacionEquipo,
@@ -12,6 +12,9 @@ import { listarGeocercas } from "./geocercas";
  * equipos reportan cada varios minutos.
  */
 export const REFRESCO_FLOTA_MS = 120_000;
+
+/** Espera antes de volver a pedir una página que falló. */
+const REINTENTO_PAGINA_MS = 15_000;
 
 /** Clave de la empresa activa: cada consulta es de una empresa y no debe mezclarse con otra. */
 export function useEmpresaClave() {
@@ -28,8 +31,11 @@ export interface FlotaProgresiva {
   data: { equipos: Equipo[]; consultado: string } | undefined;
   isLoading: boolean;
   isFetching: boolean;
+  /** No hay nada que mostrar porque falló la primera página. */
   isError: boolean;
   error: unknown;
+  /** Hay equipos cargados, pero falló una página o un refresco: se muestran los que hay y se reintenta solo. */
+  aviso: string | null;
   /** Ya están todas las páginas de equipos (las posiciones pueden seguir llegando). */
   completo: boolean;
   /** Aún se están pidiendo posiciones de alguna página. */
@@ -43,6 +49,10 @@ export interface FlotaProgresiva {
  * cuanto llega y las siguientes se piden solas, una tras otra. Las posiciones se piden aparte, de
  * a una página a la vez: es una llamada a MobiControl por equipo, y pedirlas todas juntas era lo
  * que demoraba la pantalla con miles de equipos.
+ *
+ * El refresco también va en orden, en una sola vuelta: primero las páginas y después las
+ * posiciones página por página. Con un temporizador por página, a los dos minutos se disparaban
+ * todas a la vez (miles de llamadas juntas) y la consola respondía 500.
  */
 export function useFlota(activa = true): FlotaProgresiva {
   const empresa = useEmpresaClave();
@@ -56,14 +66,19 @@ export function useFlota(activa = true): FlotaProgresiva {
     initialPageParam: 0,
     getNextPageParam: (ultima: PaginaFlota) => (ultima.hayMas ? ultima.skip + ultima.take : undefined),
     enabled: activa,
-    staleTime: REFRESCO_FLOTA_MS / 2,
-    refetchInterval: REFRESCO_FLOTA_MS,
-    refetchIntervalInBackground: false,
+    staleTime: REFRESCO_FLOTA_MS,
   });
 
   const { hasNextPage, isFetchingNextPage, isError, fetchNextPage } = paginas;
   useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage && !isError) void fetchNextPage();
+    if (!hasNextPage || isFetchingNextPage) return;
+    if (!isError) {
+      void fetchNextPage();
+      return;
+    }
+    // Una página que falló (la consola ocupada) se vuelve a pedir en un rato, sin perder lo cargado.
+    const id = setTimeout(() => void fetchNextPage(), REINTENTO_PAGINA_MS);
+    return () => clearTimeout(id);
   }, [hasNextPage, isFetchingNextPage, isError, fetchNextPage]);
 
   const lista = useMemo(() => paginas.data?.pages ?? [], [paginas.data]);
@@ -73,18 +88,30 @@ export function useFlota(activa = true): FlotaProgresiva {
     () => lista.map((p) => p.equipos.filter((e) => e.tieneGps).map((e) => e.deviceId)),
     [lista],
   );
-  const claveDe = (i: number) => ["flota-ubicaciones", empresa, lista[i]?.skip, idsPorPagina[i]?.join(",")];
+  const claveDe = (skip: number | undefined) => ["flota-ubicaciones", empresa, skip];
+
+  // Los equipos de una página, leídos del caché al momento de pedir: tras refrescar las páginas,
+  // las posiciones se piden para los equipos que hay ahora.
+  const idsDe = useCallback(
+    (skip: number) =>
+      (queryClient.getQueryData<InfiniteData<PaginaFlota>>(["flota-paginas", empresa])?.pages ?? [])
+        .find((p) => p.skip === skip)
+        ?.equipos.filter((e) => e.tieneGps)
+        .map((e) => e.deviceId) ?? [],
+    [queryClient, empresa],
+  );
 
   const ubicaciones = useQueries({
     queries: idsPorPagina.map((ids, i) => {
-      const anterior = i === 0 ? null : queryClient.getQueryState(claveDe(i - 1));
+      const skip = lista[i].skip;
+      const anterior = i === 0 ? null : queryClient.getQueryState(claveDe(lista[i - 1].skip));
       return {
-        queryKey: claveDe(i),
-        queryFn: () => obtenerUbicaciones(ids, forzar.current),
+        queryKey: claveDe(skip),
+        queryFn: () => obtenerUbicaciones(idsDe(skip), forzar.current),
         enabled: activa && ids.length > 0 && (i === 0 || anterior?.status === "success" || anterior?.status === "error"),
-        staleTime: REFRESCO_FLOTA_MS / 2,
-        refetchInterval: REFRESCO_FLOTA_MS,
-        refetchIntervalInBackground: false,
+        // Solo se vuelven a pedir en la vuelta de refresco, nunca por su cuenta.
+        staleTime: Infinity,
+        refetchOnMount: false,
       };
     }),
   });
@@ -107,22 +134,50 @@ export function useFlota(activa = true): FlotaProgresiva {
     return { equipos, consultado: lista[0].consultado };
   }, [lista, posiciones]);
 
-  const refrescar = useCallback(async () => {
-    forzar.current = true;
-    try {
-      await queryClient.refetchQueries({ queryKey: ["flota-paginas", empresa] });
-      await queryClient.refetchQueries({ queryKey: ["flota-ubicaciones", empresa] });
-    } finally {
-      forzar.current = false;
-    }
-  }, [queryClient, empresa]);
+  // Una vuelta de refresco a la vez, y en orden.
+  const enCurso = useRef<Promise<void> | null>(null);
+  const vuelta = useCallback(
+    (sinCopias: boolean) => {
+      if (enCurso.current) return enCurso.current;
+      const tarea = (async () => {
+        forzar.current = sinCopias;
+        try {
+          await queryClient.refetchQueries({ queryKey: ["flota-paginas", empresa], exact: true });
+          const paginasAhora = queryClient.getQueryData<InfiniteData<PaginaFlota>>(["flota-paginas", empresa])?.pages ?? [];
+          for (const p of paginasAhora) await queryClient.refetchQueries({ queryKey: claveDe(p.skip), exact: true });
+        } finally {
+          forzar.current = false;
+          enCurso.current = null;
+        }
+      })();
+      enCurso.current = tarea;
+      return tarea;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queryClient, empresa],
+  );
+
+  // Cada dos minutos, mientras la pestaña está a la vista y la carga inicial terminó.
+  const cargado = !paginas.hasNextPage && !paginas.isPending;
+  useEffect(() => {
+    if (!activa || !cargado) return;
+    const id = setInterval(() => {
+      if (!document.hidden) void vuelta(false);
+    }, REFRESCO_FLOTA_MS);
+    return () => clearInterval(id);
+  }, [activa, cargado, vuelta]);
+
+  const refrescar = useCallback(() => vuelta(true), [vuelta]);
 
   return {
     data,
     isLoading: paginas.isLoading,
     isFetching: paginas.isFetching || ubicaciones.some((u) => u.isFetching),
-    isError: paginas.isError,
+    isError: paginas.isError && !lista.length,
     error: paginas.error,
+    aviso: paginas.isError && lista.length
+      ? `No se pudieron traer todos los equipos (${(paginas.error as Error)?.message ?? "error"}). Se reintenta solo.`
+      : null,
     completo: !paginas.hasNextPage && !paginas.isFetchingNextPage && !paginas.isLoading,
     ubicando: ubicaciones.some((u) => u.isPending && u.fetchStatus !== "idle") || ubicaciones.some((u) => u.isFetching),
     refrescar,

@@ -222,6 +222,8 @@ export function Monitor() {
           </button>
         </div>
 
+        {flota.aviso && <Aviso tipo="alerta">{flota.aviso}</Aviso>}
+
         <div className="kpis" role="group" aria-label="Filtrar por estado">
           {FILTROS.map((f) => (
             <button

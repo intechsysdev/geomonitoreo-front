@@ -119,6 +119,8 @@ export function Dispositivos() {
       ) : flota.isError ? (
         <Aviso tipo="error">{(flota.error as Error).message}</Aviso>
       ) : (
+        <>
+        {flota.aviso && <Aviso tipo="alerta">{flota.aviso}</Aviso>}
         <div className="tarjeta tabla-contenedor">
           <table className="tabla">
             <thead>
@@ -164,6 +166,7 @@ export function Dispositivos() {
           </table>
           {filas.length === 0 && <p className="vacio-lista suave">Ningún equipo coincide con los filtros.</p>}
         </div>
+        </>
       )}
     </div>
   );
