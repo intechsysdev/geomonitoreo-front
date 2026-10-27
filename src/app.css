@@ -1,5 +1,20 @@
 @layer componentes {
   /* =======================================================================================
+     Marca: cada logo va en sus dos variantes (ver Marca en Marco.tsx) y se ve la del tema, el
+     del sistema o el fijado en data-tema. Sin efectos ni nada encima: se usa tal cual.
+     ======================================================================================= */
+  .marca-oficial { display: block; flex: none; }
+  .marca-oficial img { inline-size: auto; }
+  .variante-oscura { display: none; }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-tema="light"]) .variante-clara { display: none; }
+    :root:not([data-tema="light"]) .variante-oscura { display: block; }
+  }
+  :root[data-tema="dark"] .variante-clara { display: none; }
+  :root[data-tema="dark"] .variante-oscura { display: block; }
+
+  /* =======================================================================================
      Marco: riel de navegación + contenido.
      ======================================================================================= */
   .marco {
@@ -20,8 +35,9 @@
     z-index: 5;
   }
 
-  .riel-logo { display: grid; place-items: center; margin-block-end: 0.5rem; }
-  .riel-logo .logo-barrido { transform-origin: 16px 16px; animation: barrido 4s linear infinite; --animation-reduced: none; }
+  /* En el riel angosto va solo la marca compacta. */
+  .riel-logo { display: grid; place-items: center; margin-block-end: 0.5rem; border-radius: var(--radio-chico); }
+  .riel-logo img { block-size: 2.375rem; }
 
   @keyframes barrido { to { rotate: 1turn; } }
 
@@ -87,7 +103,7 @@
     border: 2px solid var(--marca-suave);
     background: linear-gradient(135deg, var(--marca-viva), var(--marca-profunda));
     color: white;
-    font-weight: 800;
+    font-weight: 700;
     cursor: pointer;
   }
 
@@ -182,7 +198,7 @@
     align-items: flex-start;
     gap: 0.75rem;
 
-    & h1 { font-size: 1.25rem; font-weight: 800; }
+    & h1 { font-size: 1.25rem; font-weight: 700; }
   }
 
   .girando { animation: girar 0.9s linear infinite; --animation-reduced: none; }
@@ -195,7 +211,7 @@
   }
 
   .kpi {
-    --color: var(--marca);
+    --color: var(--marca-texto);
     display: grid;
     gap: 0.05rem;
     padding: 0.5rem 0.6rem;
@@ -218,7 +234,7 @@
     }
   }
 
-  .kpi-numero { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--color); line-height: 1.2; }
+  .kpi-numero { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color); line-height: 1.2; }
   .kpi-nombre { font-size: 0.6875rem; font-weight: 700; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: 0.03em; }
 
   .lista-equipos, .lista-zonas {
@@ -350,7 +366,7 @@
     --animation-reduced: none;
 
     &[data-estado="en-linea"] { --color: #22c55e; }
-    &[data-estado="sin-senal"] { --color: #e51e4a; }
+    &[data-estado="sin-senal"] { --color: #e51e49; }
   }
 
   @keyframes pulso {
@@ -381,7 +397,7 @@
 
   .detalle-cabeza { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
   .detalle-titulo { display: grid; gap: 0.35rem; justify-items: start; min-inline-size: 0; }
-  .detalle-titulo h2 { font-size: 1.2rem; font-weight: 800; overflow-wrap: anywhere; }
+  .detalle-titulo h2 { font-size: 1.2rem; font-weight: 700; overflow-wrap: anywhere; }
 
   .detalle-indicadores {
     display: grid;
@@ -405,7 +421,7 @@
   .detalle-bloque {
     display: grid;
     gap: 0.5rem;
-    & h3 { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tinta-suave); }
+    & h3 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tinta-suave); }
   }
 
   .coordenadas { display: flex; align-items: center; gap: 0.35rem; }
@@ -477,7 +493,7 @@
     background: color-mix(in oklab, var(--hundido) 75%, transparent);
 
     & svg { inline-size: 1rem; block-size: 1rem; color: var(--marca); margin-block-end: 0.2rem; }
-    & strong { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    & strong { font-size: 0.95rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
     & span { font-size: 0.6875rem; color: var(--tinta-suave); font-weight: 600; }
   }
 
@@ -587,7 +603,7 @@
     inline-size: 20px;
     block-size: 20px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #ff6b8b, var(--marca-profunda));
+    background: radial-gradient(circle at 35% 35%, #ff5c7f, var(--marca-profunda));
     translate: 0 50%;
     border: 3px solid white;
     box-shadow: 0 0 0 6px rgb(14 116 144 / 0.25), 0 4px 10px rgb(0 0 0 / 0.35);
@@ -677,7 +693,7 @@
     align-items: flex-end;
     gap: 1rem;
     flex-wrap: wrap;
-    & h1 { font-size: clamp(1.4rem, 1.1rem + 1vw, 1.9rem); font-weight: 800; }
+    & h1 { font-size: clamp(1.4rem, 1.1rem + 1vw, 1.9rem); font-weight: 700; }
   }
 
   .filtros {
@@ -709,9 +725,9 @@
     padding: clamp(1.5rem, 4vw, 3.5rem);
     color: white;
     background:
-      radial-gradient(circle at 30% 20%, rgb(229 30 74 / 0.3), transparent 45%),
+      radial-gradient(circle at 30% 20%, rgb(229 30 73 / 0.3), transparent 45%),
       radial-gradient(circle at 80% 90%, rgb(248 178 29 / 0.16), transparent 55%),
-      linear-gradient(160deg, #3c3c3b, #1f1f1d 55%, #141413);
+      linear-gradient(160deg, var(--marca-grafito), var(--marca-gris) 55%, #141413);
 
     /* Cuadrícula de mapa. */
     &::before {
@@ -734,16 +750,16 @@
     aspect-ratio: 1;
     border-radius: 50%;
     background:
-      radial-gradient(circle, transparent 0 24.5%, rgb(229 30 74 / 0.22) 25% 25.4%, transparent 25.8% 49.5%,
-        rgb(229 30 74 / 0.16) 50% 50.4%, transparent 50.8% 74.5%, rgb(229 30 74 / 0.11) 75% 75.4%, transparent 75.8%);
-    border: 1px solid rgb(229 30 74 / 0.22);
+      radial-gradient(circle, transparent 0 24.5%, rgb(229 30 73 / 0.22) 25% 25.4%, transparent 25.8% 49.5%,
+        rgb(229 30 73 / 0.16) 50% 50.4%, transparent 50.8% 74.5%, rgb(229 30 73 / 0.11) 75% 75.4%, transparent 75.8%);
+    border: 1px solid rgb(229 30 73 / 0.22);
   }
 
   .radar-barrido {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: conic-gradient(from 0deg, rgb(229 30 74 / 0.4), transparent 22%);
+    background: conic-gradient(from 0deg, rgb(229 30 73 / 0.4), transparent 22%);
     animation: barrido 5s linear infinite;
     --animation-reduced: none;
   }
@@ -767,21 +783,34 @@
     gap: 1.1rem;
     max-inline-size: 30rem;
 
-    & h2 { font-size: clamp(1.6rem, 1.1rem + 1.8vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; }
+    & h2 { font-size: clamp(1.6rem, 1.1rem + 1.8vw, 2.6rem); font-weight: 700; letter-spacing: -0.03em; }
     & ul { display: grid; gap: 0.6rem; padding: 0; list-style: none; color: rgb(255 255 255 / 0.8); }
     & li { display: flex; gap: 0.6rem; align-items: center; }
     & svg { inline-size: 1.1rem; block-size: 1.1rem; color: var(--marca-oro); flex: none; }
   }
 
   .ingreso-panel {
+    container: ingreso / inline-size;
     display: grid;
     grid-template-rows: auto 1fr auto;
     padding: clamp(1.25rem, 3vw, 2.5rem);
     background: var(--superficie);
   }
 
-  .ingreso-arriba { display: flex; justify-content: space-between; align-items: center; }
-  .marca-texto { display: inline-flex; gap: 0.6rem; align-items: center; font-weight: 800; font-size: 1.05rem; }
+  .ingreso-arriba { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+
+  /* El logo horizontal pide 360 px; si el panel no los tiene, va la marca compacta. El nombre
+     del producto es texto, aparte del logo. */
+  .marca-texto { display: inline-flex; flex-direction: column; gap: 0.75rem; align-items: flex-start; font-weight: 600; font-size: 1.05rem; }
+  .marca-ancha img { inline-size: 360px; block-size: auto; }
+  .marca-compacta { display: none; }
+  .marca-compacta img { block-size: 72px; }
+
+  @container ingreso (width < 26rem) {
+    .marca-texto { flex-direction: row; align-items: center; gap: 0.9rem; }
+    .marca-ancha { display: none; }
+    .marca-compacta { display: block; }
+  }
 
   .ingreso-formulario {
     align-self: center;
@@ -789,7 +818,7 @@
     inline-size: min(100%, 23rem);
     display: grid;
     gap: 1rem;
-    & h1 { font-size: 1.75rem; font-weight: 800; }
+    & h1 { font-size: 1.75rem; font-weight: 700; }
   }
 
   .boton.grande { min-block-size: 2.85rem; font-size: 0.9375rem; text-decoration: none; }
@@ -851,7 +880,7 @@
     translate: 0 50%;
 
     &[data-estado="en-linea"] { --color: #22c55e; }
-    &[data-estado="sin-senal"] { --color: #e51e4a; }
+    &[data-estado="sin-senal"] { --color: #e51e49; }
   }
 
   .equipo-nombre {
@@ -878,16 +907,16 @@
     background: color-mix(in oklab, #16a34a calc(var(--proporcion, 0) * 100%), #5a5958);
     color: white;
     font-size: 0.8125rem;
-    font-weight: 800;
+    font-weight: 700;
     box-shadow: 0 0 0 5px color-mix(in oklab, var(--superficie) 55%, transparent), 0 3px 10px rgb(0 0 0 / 0.3);
     translate: 0 50%;
     cursor: pointer;
   }
 
   .etiqueta-zona {
-    --color: var(--marca);
+    --color: var(--marca-texto);
     font-size: 0.75rem;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--color);
     text-shadow: 0 0 3px var(--superficie), 0 0 3px var(--superficie), 0 0 2px var(--superficie);
     translate: 0 50%;
@@ -906,10 +935,10 @@
     translate: 0 50%;
     color: white;
     font-size: 0.5625rem;
-    font-weight: 800;
+    font-weight: 700;
 
     &[data-tipo="inicio"] { background: #16a34a; }
-    &[data-tipo="fin"] { background: #1f1f1d; }
+    &[data-tipo="fin"] { background: var(--marca-gris); }
     &[data-tipo="parada"] { inline-size: 20px; block-size: 20px; border-width: 2.5px; background: var(--marca-ambar); }
     &[data-tipo="entrada"], &[data-tipo="salida"] { inline-size: 11px; block-size: 11px; border-width: 2px; }
     &[data-tipo="entrada"] { background: #16a34a; }

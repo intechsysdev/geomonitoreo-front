@@ -6,17 +6,24 @@
    light-dark() (con respaldo por media query para navegadores que todavía no lo tienen).
    ========================================================================================= */
 :root {
-  --fuente: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --fuente-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+  --fuente: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fuente-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* Marca Intechsys: carmesí para la acción (medio de día, vivo de noche), carbón para
-     el texto y las superficies, ámbar para lo que pide atención. */
-  --marca-claro: #af1839;
-  --marca-oscuro: #e51e4a;
+  /* Marca INTECHSYS ONE (manual de marca): el rojo principal para lo gráfico (estado activo,
+     foco, indicadores), el rojo oscuro para el botón primario y el texto de acento, el
+     borgoña para el botón presionado; gris profundo y grafito para el texto y las
+     superficies; ocre y amarillo para lo que pide atención. */
+  --marca-viva: #e51e49;
+  --marca-intensa: #af1839;
   --marca-profunda: #751326;
-  --marca-viva: #e51e4a;
+  --marca-gris: #1e1f1d;
+  --marca-grafito: #3c3c3b;
   --marca-ambar: #da830b;
   --marca-oro: #f8b21d;
+  /* Texto de acento: el rojo oscuro de día; de noche, un tinte claro del rojo, que sí se lee
+     sobre el gris profundo (el rojo principal no llega a 4,5:1 como texto). */
+  --marca-texto-claro: var(--marca-intensa);
+  --marca-texto-oscuro: #ff5c7f;
   /* La barra de la guía de marca: profundo → vivo → profundo. */
   --marca-banda: linear-gradient(90deg, var(--marca-profunda), var(--marca-viva) 50%, var(--marca-profunda));
 
@@ -31,21 +38,24 @@
   --apagado-claro: #8a8986;
   --apagado-oscuro: #9a9894;
 
-  /* Neutros cálidos, de la familia del carbón de la marca. */
+  /* Neutros cálidos, de la familia de los grises de la marca: de noche, el gris profundo de
+     base y, hacia el grafito, las superficies que se elevan. */
   --fondo-claro: #f7f6f4;
-  --fondo-oscuro: #181817;
+  --fondo-oscuro: var(--marca-gris);
   --superficie-claro: #ffffff;
-  --superficie-oscuro: #232321;
+  --superficie-oscuro: color-mix(in oklab, var(--marca-grafito) 25%, var(--marca-gris));
   --hundido-claro: #efeeeb;
-  --hundido-oscuro: #2b2b29;
-  --tinta-claro: #1f1f1d;
+  --hundido-oscuro: color-mix(in oklab, var(--marca-grafito) 50%, var(--marca-gris));
+  --tinta-claro: var(--marca-gris);
   --tinta-oscuro: #f3f2ef;
   --tinta-suave-claro: #5a5958;
   --tinta-suave-oscuro: #a9a7a3;
   --linea-claro: #e4e2de;
-  --linea-oscuro: #3a3a38;
+  --linea-oscuro: var(--marca-grafito);
 
-  --marca: var(--marca-claro);
+  /* El rojo principal es el mismo en los dos temas; lo que cambia es el texto de acento. */
+  --marca: var(--marca-viva);
+  --marca-texto: var(--marca-texto-claro);
   --ok: var(--ok-claro);
   --aviso: var(--aviso-claro);
   --peligro: var(--peligro-claro);
@@ -58,7 +68,7 @@
   --linea: var(--linea-claro);
 
   @media (prefers-color-scheme: dark) {
-    --marca: var(--marca-oscuro);
+    --marca-texto: var(--marca-texto-oscuro);
     --ok: var(--ok-oscuro);
     --aviso: var(--aviso-oscuro);
     --peligro: var(--peligro-oscuro);
@@ -72,7 +82,7 @@
   }
 
   @supports (color: light-dark(white, black)) {
-    --marca: light-dark(var(--marca-claro), var(--marca-oscuro));
+    --marca-texto: light-dark(var(--marca-texto-claro), var(--marca-texto-oscuro));
     --ok: light-dark(var(--ok-claro), var(--ok-oscuro));
     --aviso: light-dark(var(--aviso-claro), var(--aviso-oscuro));
     --peligro: light-dark(var(--peligro-claro), var(--peligro-oscuro));
@@ -89,8 +99,8 @@
   --vidrio: color-mix(in oklab, var(--superficie) 80%, transparent);
   --vidrio-borde: color-mix(in oklab, var(--tinta) 10%, transparent);
   --marca-suave: color-mix(in oklab, var(--marca) 14%, transparent);
-  --sombra: 0 1px 2px oklch(0% 0 0 / 0.06), 0 8px 24px -8px rgb(31 31 29 / 0.22);
-  --sombra-alta: 0 2px 4px oklch(0% 0 0 / 0.08), 0 24px 48px -12px rgb(31 31 29 / 0.35);
+  --sombra: 0 1px 2px oklch(0% 0 0 / 0.06), 0 8px 24px -8px rgb(30 31 29 / 0.22);
+  --sombra-alta: 0 2px 4px oklch(0% 0 0 / 0.08), 0 24px 48px -12px rgb(30 31 29 / 0.35);
 
   --radio: 14px;
   --radio-chico: 9px;
@@ -108,13 +118,13 @@
 /* Sin light-dark(), el tema fijado se aplica con las variables a mano. */
 @supports not (color: light-dark(white, black)) {
   :root[data-tema="dark"] {
-    --marca: var(--marca-oscuro); --ok: var(--ok-oscuro); --aviso: var(--aviso-oscuro);
+    --marca-texto: var(--marca-texto-oscuro); --ok: var(--ok-oscuro); --aviso: var(--aviso-oscuro);
     --peligro: var(--peligro-oscuro); --apagado: var(--apagado-oscuro); --fondo: var(--fondo-oscuro);
     --superficie: var(--superficie-oscuro); --hundido: var(--hundido-oscuro); --tinta: var(--tinta-oscuro);
     --tinta-suave: var(--tinta-suave-oscuro); --linea: var(--linea-oscuro);
   }
   :root[data-tema="light"] {
-    --marca: var(--marca-claro); --ok: var(--ok-claro); --aviso: var(--aviso-claro);
+    --marca-texto: var(--marca-texto-claro); --ok: var(--ok-claro); --aviso: var(--aviso-claro);
     --peligro: var(--peligro-claro); --apagado: var(--apagado-claro); --fondo: var(--fondo-claro);
     --superficie: var(--superficie-claro); --hundido: var(--hundido-claro); --tinta: var(--tinta-claro);
     --tinta-suave: var(--tinta-suave-claro); --linea: var(--linea-claro);
@@ -137,6 +147,7 @@
   body {
     min-block-size: 100dvh;
     font-family: var(--fuente);
+    font-optical-sizing: auto;
     font-size: 0.9375rem;
     line-height: 1.5;
     color: var(--tinta);
@@ -146,10 +157,10 @@
 
   #root { min-block-size: 100dvh; }
 
-  h1, h2, h3 { line-height: 1.2; text-wrap: balance; letter-spacing: -0.015em; }
+  h1, h2, h3 { line-height: 1.2; text-wrap: balance; letter-spacing: -0.02em; }
   p { text-wrap: pretty; }
 
-  a { color: var(--marca); text-underline-offset: 0.2em; }
+  a { color: var(--marca-texto); text-underline-offset: 0.2em; }
 
   :focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; }
 
@@ -180,11 +191,12 @@
     &:active:not(:disabled) { translate: 0 1px; }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* Fondo en el rojo oscuro: el rojo principal no da contraste con texto blanco chico. */
     &.primario {
-      background: var(--marca);
+      background: var(--marca-intensa);
       border-color: transparent;
       color: white;
-      &:hover:not(:disabled) { background: color-mix(in oklab, var(--marca) 88%, black); }
+      &:hover:not(:disabled) { background: var(--marca-profunda); }
     }
 
     &.peligro { color: var(--peligro); }
@@ -276,7 +288,7 @@
     &[data-tono="ok"] { --color: var(--ok); }
     &[data-tono="aviso"] { --color: var(--aviso); }
     &[data-tono="peligro"] { --color: var(--peligro); }
-    &[data-tono="marca"] { --color: var(--marca); }
+    &[data-tono="marca"] { --color: var(--marca-texto); }
     & svg { inline-size: 0.85rem; block-size: 0.85rem; }
   }
 
@@ -361,7 +373,7 @@
     @starting-style { &[open] { opacity: 0; translate: 0 0.75rem; } }
 
     &::backdrop {
-      background: rgb(31 31 29 / 0.5);
+      background: rgb(30 31 29 / 0.5);
       backdrop-filter: blur(3px);
     }
 

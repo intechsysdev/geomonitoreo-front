@@ -11,21 +11,26 @@ const SECCIONES = [
   { a: "/geocercas", nombre: "Geocercas", Icono: Hexagon },
 ];
 
-export function Logo({ tamano = 36 }: { tamano?: number }) {
+/** Proporciones de los SVG de la marca, para que el lugar quede reservado antes de que carguen. */
+const PIEZAS = {
+  /** Horizontal, sin lema: para la pantalla de entrada (no menos de 360 px de ancho). */
+  logo: { ancho: 942, alto: 342 },
+  /** Compacta (isotipo + "one"), vertical: para el riel y los espacios chicos. */
+  marca: { ancho: 545, alto: 757 },
+};
+
+/**
+ * Marca oficial de INTECHSYS ONE. Va en sus dos variantes y el CSS muestra la del tema (el del
+ * sistema o el fijado en data-tema), así no hay que esperar a React para elegirla. Es una
+ * imagen y no SVG en línea: los ids internos de los archivos chocarían entre sí.
+ */
+export function Marca({ pieza, alt = "INTECHSYS ONE", className }: { pieza: keyof typeof PIEZAS; alt?: string; className?: string }) {
+  const { ancho, alto } = PIEZAS[pieza];
   return (
-    <svg width={tamano} height={tamano} viewBox="0 0 32 32" aria-hidden className="logo">
-      <defs>
-        <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#e51e4a" />
-          <stop offset="1" stopColor="#751326" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="9" fill="url(#logo-g)" />
-      <circle cx="16" cy="16" r="9" fill="none" stroke="#fff" strokeOpacity=".45" strokeWidth="1.5" />
-      <circle cx="16" cy="16" r="4.5" fill="none" stroke="#fff" strokeOpacity=".7" strokeWidth="1.5" />
-      <path d="M16 16 L24 9" stroke="#fff" strokeWidth="2" strokeLinecap="round" className="logo-barrido" />
-      <circle cx="16" cy="16" r="2" fill="#fff" />
-    </svg>
+    <span className={className ? `marca-oficial ${className}` : "marca-oficial"}>
+      <img src={`/marca/${pieza}.svg`} width={ancho} height={alto} alt={alt} className="variante-clara" />
+      <img src={`/marca/${pieza}-oscuro.svg`} width={ancho} height={alto} alt={alt} className="variante-oscura" />
+    </span>
   );
 }
 
@@ -90,8 +95,8 @@ export function Marco({ children }: { children: ReactNode }) {
   return (
     <div className="marco">
       <nav className="riel" aria-label="Secciones">
-        <NavLink to="/monitor" className="riel-logo" aria-label="Geomonitoreo">
-          <Logo />
+        <NavLink to="/monitor" className="riel-logo" aria-label="Geomonitoreo · INTECHSYS ONE">
+          <Marca pieza="marca" alt="" />
         </NavLink>
 
         <ul className="riel-lista">

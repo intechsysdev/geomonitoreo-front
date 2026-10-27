@@ -6,7 +6,7 @@ import { useSesion } from "../sesion/SesionContexto";
 import { useTema } from "../tema/Tema";
 import { acabaDeSalir, marcarEntradaAutomatica, puedeEntrarSolo, ssoDisponible } from "../api/sso";
 import { Aviso, Cargando } from "../componentes/Basicos";
-import { Logo } from "../componentes/Marco";
+import { Marca } from "../componentes/Marco";
 
 const PUNTOS = [
   { x: 22, y: 30, d: 0 }, { x: 64, y: 22, d: 1.2 }, { x: 78, y: 58, d: 2.1 }, { x: 40, y: 70, d: 0.6 },
@@ -71,7 +71,12 @@ export function Login() {
 
       <main className="ingreso-panel">
         <div className="ingreso-arriba">
-          <span className="marca-texto"><Logo tamano={30} /> Geomonitoreo</span>
+          <span className="marca-texto">
+            {/* Horizontal si el panel tiene lugar; si no, la compacta. El CSS elige. */}
+            <Marca pieza="logo" className="marca-ancha" />
+            <Marca pieza="marca" className="marca-compacta" />
+            Geomonitoreo
+          </span>
           <button type="button" className="boton fantasma icono" onClick={alternar} aria-label={oscuro ? "Usar tema claro" : "Usar tema oscuro"}>
             {oscuro ? <Sun aria-hidden /> : <Moon aria-hidden />}
           </button>
