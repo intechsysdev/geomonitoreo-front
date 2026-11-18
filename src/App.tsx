@@ -62,7 +62,7 @@ function Consola() {
     <Marco>
       {!empresaActiva ? (
         <div className="pagina">
-          <Aviso>Elige una empresa arriba para ver su flota.</Aviso>
+          <Aviso>Elige una empresa en el menú para ver su flota.</Aviso>
           {esAdministradorPlataforma && (
             <Routes>
               <Route path="/vinculos" element={<Vinculos />} />

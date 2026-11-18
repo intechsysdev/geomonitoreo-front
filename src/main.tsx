@@ -19,11 +19,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// El navegador sin Popover API (menú de la cuenta) recibe el polyfill; los demás, nada.
-if (!("popover" in HTMLElement.prototype)) {
-  void import("@oddbird/popover-polyfill");
-}
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ProveedorTema>

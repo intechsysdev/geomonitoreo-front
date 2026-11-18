@@ -104,7 +104,9 @@
 
   --radio: 14px;
   --radio-chico: 9px;
-  --riel: 4.25rem;
+  /* El menú: ancho del panel lateral y alto de la barra de las pantallas angostas. */
+  --menu-ancho: 16.5rem;
+  --barra-movil: 3.75rem;
   --separacion: 0.75rem;
 
   color-scheme: light dark;

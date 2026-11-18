@@ -15,152 +15,235 @@
   :root[data-tema="dark"] .variante-oscura { display: block; }
 
   /* =======================================================================================
-     Marco: riel de navegación + contenido.
+     Marco: el menú en un panel a la izquierda (el mismo de One) + contenido, que es lo único que
+     hace scroll. En pantallas angostas, barra arriba y el menú en un cajón.
      ======================================================================================= */
   .marco {
     display: grid;
-    grid-template-columns: var(--riel) 1fr;
+    grid-template-columns: var(--menu-ancho) minmax(0, 1fr);
     block-size: 100dvh;
     overflow: hidden;
   }
 
-  .riel {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding-block: 0.9rem;
-    background: var(--superficie);
+  .menu-lateral {
+    min-block-size: 0;
+    background: var(--fondo);
     border-inline-end: 1px solid var(--linea);
     z-index: 5;
   }
 
-  /* En el riel angosto va solo la marca compacta. */
-  .riel-logo { display: grid; place-items: center; margin-block-end: 0.5rem; border-radius: var(--radio-chico); }
-  .riel-logo img { block-size: 2.375rem; }
+  /* Lo de adentro del menú: igual en el panel y en el cajón. */
+  .menu-contenido {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    block-size: 100%;
+    padding: 1rem 0.75rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
 
-  @keyframes barrido { to { rotate: 1turn; } }
+  .menu-arriba { display: grid; gap: 0.75rem; }
 
-  .riel-lista { display: grid; gap: 0.35rem; }
+  .menu-marca { display: flex; align-items: center; gap: 0.75rem; padding: 0.25rem 0.75rem; }
+  .menu-logo { flex: none; border-radius: var(--radio-chico); }
+  .menu-logo img { block-size: 2.5rem; }
+  .menu-cerrar { margin-inline-end: -0.5rem; }
 
-  .riel-enlace {
-    position: relative;
+  .menu-producto {
+    flex: 1;
+    min-inline-size: 0;
     display: grid;
-    place-items: center;
-    inline-size: 2.75rem;
-    block-size: 2.75rem;
-    border: 0;
-    border-radius: 12px;
+    line-height: 1.3;
+
+    & strong { font-size: 0.8125rem; font-weight: 600; color: var(--tinta); }
+    & span { font-size: 0.75rem; color: var(--tinta-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  }
+
+  .selector-empresa { font-size: 0.8125rem; font-weight: 600; }
+
+  .menu-secciones { display: grid; align-content: start; gap: 1.5rem; }
+  .menu-grupo { display: grid; gap: 0.25rem; }
+  .menu-grupo ul { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+
+  .menu-titulo {
+    padding: 0 0.75rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--tinta-suave);
+  }
+
+  .menu-enlace {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    inline-size: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 8px;
     background: transparent;
+    color: var(--tinta-suave);
+    font-size: 0.84375rem;
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: start;
+    text-decoration: none;
     cursor: pointer;
     transition: background-color 0.15s, color 0.15s;
 
-    & svg { inline-size: 1.3rem; block-size: 1.3rem; }
-    &:hover { background: var(--hundido); color: var(--tinta); }
+    & svg { inline-size: 1.125rem; block-size: 1.125rem; flex: none; }
+    &:not(.active):hover { background: var(--hundido); color: var(--tinta); }
 
+    /* La activa: fondo de acento suave, texto de acento y una barrita pegada al borde. */
     &.active {
-      color: var(--marca);
       background: var(--marca-suave);
+      color: var(--marca-texto);
+
       &::before {
         content: "";
         position: absolute;
-        inset-inline-start: -0.95rem;
-        inset-block: 0.6rem;
-        inline-size: 3px;
-        border-radius: 0 3px 3px 0;
+        inset-inline-start: 0;
+        inline-size: 2px;
+        block-size: 1.25rem;
+        border-radius: 0 2px 2px 0;
         background: var(--marca);
       }
     }
-
-    /* Rótulo al pasar el puntero: el riel solo tiene íconos. */
-    &::after {
-      content: attr(data-titulo);
-      position: absolute;
-      inset-inline-start: calc(100% + 0.6rem);
-      padding: 0.3rem 0.6rem;
-      border-radius: 7px;
-      background: var(--tinta);
-      color: var(--superficie);
-      font-size: 0.75rem;
-      font-weight: 600;
-      white-space: nowrap;
-      opacity: 0;
-      translate: -4px 0;
-      pointer-events: none;
-      transition: opacity 0.12s, translate 0.12s;
-      z-index: 20;
-    }
-    &:is(:hover, :focus-visible)::after { opacity: 1; translate: 0; }
   }
 
-  .riel-pie { margin-block-start: auto; display: grid; gap: 0.5rem; justify-items: center; }
+  .menu-pie {
+    margin-block-start: auto;
+    display: grid;
+    gap: 0.25rem;
+    padding-block-start: 0.75rem;
+    border-block-start: 1px solid var(--linea);
+  }
+
+  .menu-usuario { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0.75rem; }
+
+  .menu-usuario-texto {
+    min-inline-size: 0;
+    display: grid;
+    line-height: 1.3;
+
+    & > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    & strong { font-size: 0.8125rem; font-weight: 600; }
+    & span { font-size: 0.75rem; color: var(--tinta-suave); }
+  }
 
   .avatar {
-    inline-size: 2.4rem;
-    block-size: 2.4rem;
+    display: grid;
+    place-items: center;
+    flex: none;
+    inline-size: 2rem;
+    block-size: 2rem;
     border-radius: 50%;
-    border: 2px solid var(--marca-suave);
     background: linear-gradient(135deg, var(--marca-viva), var(--marca-profunda));
     color: white;
+    font-size: 0.8125rem;
     font-weight: 700;
-    cursor: pointer;
   }
 
-  .menu-usuario {
-    position: fixed;
-    inset: auto auto 0.9rem calc(var(--riel) + 0.6rem);
-    margin: 0;
-    inline-size: 16rem;
-    padding: 0.6rem;
-    color: var(--tinta);
+  /* Pantallas angostas: barra arriba con el botón del menú. */
+  .barra-movil {
     display: none;
+    align-items: center;
+    gap: 0.75rem;
+    padding-inline: 0.75rem 1rem;
+    background: var(--fondo);
+    border-block-end: 1px solid var(--linea);
+    z-index: 5;
 
-    &:where(:popover-open, .\:popover-open) { display: grid; gap: 0.4rem; }
-    & .boton { justify-content: flex-start; }
+    & .marca-oficial img { block-size: 2rem; }
   }
 
-  .menu-usuario-cabeza { display: grid; padding: 0.4rem 0.6rem 0.6rem; border-block-end: 1px solid var(--linea); overflow-wrap: anywhere; }
+  .barra-movil-nombre { font-size: 0.875rem; font-weight: 600; }
+
+  .boton-menu {
+    display: grid;
+    place-items: center;
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+    margin-inline-start: -0.25rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--tinta-suave);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+
+    & svg { inline-size: 1.25rem; block-size: 1.25rem; }
+    &:hover { background: var(--hundido); color: var(--tinta); }
+  }
+
+  /* El mismo menú en un diálogo modal que entra desde la izquierda: atrapa el foco, se cierra
+     con Escape o tocando el fondo y devuelve el foco al botón. */
+  .cajon-menu {
+    position: fixed;
+    inset: 0 auto 0 0;
+    inline-size: min(var(--menu-ancho), calc(100vw - 3rem));
+    max-inline-size: none;
+    block-size: 100dvh;
+    max-block-size: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-inline-end: 1px solid var(--linea);
+    background: var(--fondo);
+    color: var(--tinta);
+    box-shadow: var(--sombra-alta);
+    overflow: hidden;
+    opacity: 0;
+    transition-property: opacity, translate, display, overlay;
+    transition-duration: 0.22s;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-behavior: allow-discrete;
+
+    @media (prefers-reduced-motion: no-preference) { translate: -100% 0; }
+
+    &[open] {
+      opacity: 1;
+      @starting-style { opacity: 0; }
+
+      @media (prefers-reduced-motion: no-preference) {
+        translate: 0;
+        @starting-style { translate: -100% 0; }
+      }
+    }
+
+    &::backdrop {
+      background-color: rgb(30 31 29 / 0);
+      transition-property: background-color, display, overlay;
+      transition-duration: 0.22s;
+      transition-behavior: allow-discrete;
+    }
+
+    &[open]::backdrop {
+      background-color: rgb(30 31 29 / 0.5);
+      @starting-style { background-color: rgb(30 31 29 / 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &, &::backdrop { transition-duration: 0.1s; }
+    }
+  }
 
   .marco-contenido {
     position: relative;
     display: flex;
     flex-direction: column;
     min-inline-size: 0;
+    min-block-size: 0;
     overflow: hidden;
   }
 
-  /* La barra superior flota sobre el mapa; en las páginas sin mapa ocupa su lugar arriba. */
-  .barra-superior {
-    position: absolute;
-    inset-block-start: var(--separacion);
-    inset-inline-end: var(--separacion);
-    z-index: 4;
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-
-    &:empty { display: none; }
-  }
-
-  .selector-empresa {
-    inline-size: auto;
-    min-inline-size: 12rem;
-    font-weight: 700;
-    background: var(--vidrio);
-    backdrop-filter: blur(16px);
-    box-shadow: var(--sombra);
-  }
-
-  .empresa-fija {
-    padding: 0.45rem 0.85rem;
-    border-radius: 999px;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    background: var(--vidrio);
-    border: 1px solid var(--vidrio-borde);
-    backdrop-filter: blur(16px);
-    box-shadow: var(--sombra);
+  @media (width < 1024px) {
+    .marco { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--barra-movil) minmax(0, 1fr); }
+    .menu-lateral { display: none; }
+    .barra-movil { display: flex; }
   }
 
   /* =======================================================================================
@@ -171,6 +254,11 @@
     flex: 1;
     min-block-size: 0;
     isolation: isolate;
+    /* Los paneles se acomodan al ancho del mapa, no al de la pantalla: el menú lateral se lleva
+       una parte. */
+    container: mapa / inline-size;
+    /* Debajo de la fila del buscador (3,125rem de alto), con la misma separación. */
+    --bajo-buscador: calc(var(--separacion) * 2 + 3.125rem);
   }
 
   /* z-index 0: el mapa es su propio contexto de apilado. Google dibuja capas con z-index altos
@@ -304,7 +392,7 @@
   }
 
   /* En Recorridos los controles suben: abajo va el reproductor. */
-  .mapa-esquina.arriba { inset-block: calc(var(--separacion) + 3.4rem) auto; align-items: flex-start; }
+  .mapa-esquina.arriba { inset-block: var(--bajo-buscador) auto; align-items: flex-start; }
 
   .controles-mapa { display: flex; align-items: flex-end; gap: 0.5rem; }
   .controles-mapa .segmentado { align-items: center; }
@@ -378,11 +466,12 @@
      ======================================================================================= */
   .detalle-equipo {
     position: absolute;
-    inset-block-start: calc(var(--separacion) + 3.25rem);
+    inset-block-start: var(--bajo-buscador);
     inset-block-end: calc(var(--separacion) + 5rem);
     inset-inline-end: var(--separacion);
     z-index: 3;
-    inline-size: min(23rem, calc(100% - 2 * var(--separacion)));
+    /* Lo que deja el panel de la flota: con el mapa angosto se achica en vez de taparlo. */
+    inline-size: min(23rem, calc(100% - min(25rem, 100%) - 3 * var(--separacion)));
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -681,7 +770,6 @@
     flex: 1;
     overflow-y: auto;
     padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 2.5rem;
-    padding-block-start: 4.5rem;
     display: grid;
     align-content: start;
     gap: 1.1rem;
@@ -764,6 +852,8 @@
     --animation-reduced: none;
   }
 
+  @keyframes barrido { to { rotate: 1turn; } }
+
   .radar-punto {
     position: absolute;
     inline-size: 9px;
@@ -844,9 +934,6 @@
   .paso-sso { display: grid; gap: 0.9rem; padding: 2rem; max-inline-size: 28rem; text-align: center; justify-items: center; }
   .fila-botones { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
 
-  /* =======================================================================================
-     Pantallas angostas: el riel baja, el panel se vuelve una hoja inferior.
-     ======================================================================================= */
   /* =======================================================================================
      Google Maps: lo que se dibuja como marcador (HTML propio) y el aviso cuando no hay mapa.
      ======================================================================================= */
@@ -984,7 +1071,7 @@
     z-index: 4;
     inset-block-start: var(--separacion);
     inset-inline-start: calc(min(25rem, 100%) + var(--separacion) * 2);
-    inline-size: min(27rem, calc(100% - min(25rem, 100%) - var(--separacion) * 3 - 19rem));
+    inline-size: min(27rem, calc(100% - min(25rem, 100%) - var(--separacion) * 3));
     min-inline-size: 15rem;
     display: grid;
     gap: 0.4rem;
@@ -1101,33 +1188,34 @@
 
   .selector-nota { padding: 0.6rem 0.5rem; }
 
-  @media (width < 760px) {
-    .marco { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-    .riel {
-      order: 2;
-      flex-direction: row;
-      justify-content: space-around;
-      padding: 0.4rem 0.75rem;
-      border-inline-end: 0;
-      border-block-start: 1px solid var(--linea);
-    }
-    .riel-logo, .riel-enlace::after, .riel-enlace.active::before { display: none; }
-    .riel-lista { display: flex; }
-    .riel-pie { margin: 0; display: flex; }
-    .menu-usuario { inset: auto 0.75rem 4.5rem auto; }
+  /* Mapa angosto al lado del menú lateral: los controles van en columna para no tapar el panel
+     de la izquierda (en Recorridos llevan además el nombre del equipo, y piden más ancho). */
+  @container mapa (width < 60rem) {
+    .mapa-esquina.arriba, .mapa-esquina.arriba .controles-mapa { flex-direction: column; align-items: flex-end; }
+  }
 
+  @container mapa (width < 50rem) {
+    .mapa-esquina, .controles-mapa { flex-direction: column; align-items: flex-end; }
+    .detalle-equipo { inset-block-end: calc(var(--separacion) + 8.25rem); }
+  }
+
+  /* =======================================================================================
+     Mapa angosto: el panel se vuelve una hoja inferior y el detalle ocupa todo el mapa.
+     ======================================================================================= */
+  @media (width < 760px) {
     .panel-flota {
       inset-block: auto var(--separacion);
       inset-inline: var(--separacion);
       inline-size: auto;
       max-block-size: 52dvh;
     }
-    .detalle-equipo { inset: var(--separacion); inline-size: auto; }
+    /* Sobre el buscador y los controles: aquí el detalle tapa todo el mapa. */
+    .detalle-equipo { inset: var(--separacion); inline-size: auto; z-index: 5; }
     .barra-dibujo { inset-inline: var(--separacion); }
-    .buscador-mapa { inset-block-start: calc(var(--separacion) + 3.25rem); inset-inline: var(--separacion); inline-size: auto; min-inline-size: 0; }
+    .buscador-mapa { inset-inline: var(--separacion); inline-size: auto; min-inline-size: 0; }
     .aviso-mapa { padding: 2rem 1.5rem 55dvh; }
-    .barra-superior { inset-inline: var(--separacion) auto; }
-    .mapa-esquina { inset-block: 4rem auto; flex-direction: column; align-items: flex-end; }
+    /* Debajo del buscador, que va arriba a todo el ancho. */
+    .mapa-esquina, .mapa-esquina.arriba { inset-block: var(--bajo-buscador) auto; flex-direction: column; align-items: flex-end; }
     .controles-mapa { flex-direction: column; }
     .reproductor { inset-inline: var(--separacion); inset-block-end: calc(52dvh + 1.5rem); }
     .ingreso { grid-template-columns: 1fr; }
