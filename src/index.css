@@ -123,6 +123,13 @@
 
 :root[data-tema="light"] { color-scheme: light; }
 :root[data-tema="dark"] { color-scheme: dark; }
+/* Con el tema del sistema en oscuro, color-scheme: dark explícito. Al compilar, light-dark() se
+   convierte en variables que solo cambian donde se declara color-scheme, y "light dark" no las
+   cambia: sin esto, con el sistema en oscuro y sin tema fijado, light-dark() daría siempre el
+   valor claro (el marco de paso salía con fondo claro y letra clara). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="light"]) { color-scheme: dark; }
+}
 
 /* Sin light-dark(), el tema fijado se aplica con las variables a mano. */
 @supports not (color: light-dark(white, black)) {
