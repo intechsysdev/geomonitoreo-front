@@ -112,7 +112,7 @@
   --radio: 14px;
   --radio-chico: 9px;
   /* El menú: ancho del panel lateral y alto de la barra de las pantallas angostas. */
-  --menu-ancho: 16.5rem;
+  --menu-ancho: 18rem; /* 288 px, como el menú de WorkLog */
   --barra-movil: 3.75rem;
   --separacion: 0.75rem;
 
