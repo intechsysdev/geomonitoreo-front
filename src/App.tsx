@@ -4,6 +4,7 @@ import { LimiteErrores } from "./componentes/LimiteErrores";
 import { Aviso, Cargando } from "./componentes/Basicos";
 import { useSesion } from "./sesion/SesionContexto";
 import { Login } from "./paginas/Login";
+import { ElegirEmpresa } from "./paginas/ElegirEmpresa";
 import { SsoInicio, SsoRetorno } from "./paginas/Sso";
 import { Monitor } from "./paginas/Monitor";
 import { Dispositivos } from "./paginas/Dispositivos";
@@ -58,21 +59,16 @@ function Consola() {
     );
   }
 
+  // Con varias empresas y ninguna elegida (la sesión ya usó la que mandó One, la guardada o la
+  // única) se pregunta antes de entrar. Al administrador de plataforma también: sin empresa no
+  // hay flota que mostrarle, y Vínculos le queda en el menú una vez elegida.
+  if (!empresaActiva) return <ElegirEmpresa />;
+
   return (
     <Marco>
-      {!empresaActiva ? (
-        <div className="pagina">
-          <Aviso>Elige una empresa en el menú para ver su flota.</Aviso>
-          {esAdministradorPlataforma && (
-            <Routes>
-              <Route path="/vinculos" element={<Vinculos />} />
-            </Routes>
-          )}
-        </div>
-      ) : (
-        // La clave es la empresa: al cambiarla, cada pantalla se monta de nuevo con sus datos. El
-        // límite de errores se reinicia al cambiar de pantalla: una que falló no tumba las demás.
-        <LimiteErrores key={pathname}>
+      {/* La clave es la empresa: al cambiarla, cada pantalla se monta de nuevo con sus datos. El
+          límite de errores se reinicia al cambiar de pantalla: una que falló no tumba las demás. */}
+      <LimiteErrores key={pathname}>
         <Routes key={empresaActiva.oneTenantId}>
           <Route path="/monitor" element={<Monitor />} />
           <Route path="/dispositivos" element={<Dispositivos />} />
@@ -81,8 +77,7 @@ function Consola() {
           <Route path="/vinculos" element={esAdministradorPlataforma ? <Vinculos /> : <Navigate to="/monitor" replace />} />
           <Route path="*" element={<Navigate to="/monitor" replace />} />
         </Routes>
-        </LimiteErrores>
-      )}
+      </LimiteErrores>
     </Marco>
   );
 }

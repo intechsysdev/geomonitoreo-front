@@ -935,6 +935,80 @@
   .fila-botones { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
 
   /* =======================================================================================
+     Elegir empresa: el marco de las pantallas de paso (fondo de la app, tarjeta centrada) con
+     el logo de la entrada. Es contenedor "ingreso" como el panel del login, así el logo cambia
+     a la marca compacta con la misma regla.
+     ======================================================================================= */
+  .eleccion {
+    container: ingreso / inline-size;
+    inline-size: min(100%, 28rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    padding-block: 1.5rem;
+  }
+
+  .eleccion .marca-texto { justify-self: center; align-items: center; }
+
+  .eleccion-tarjeta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+
+  @container ingreso (width < 26rem) {
+    .eleccion-tarjeta { padding: 1.5rem; }
+  }
+
+  .eleccion-cabeza {
+    display: grid;
+    gap: 0.4rem;
+    & h1 { font-size: 1.5rem; font-weight: 700; }
+    /* Solo recibe el foco para que se anuncie la pantalla: no es un control. */
+    & h1:focus { outline: none; }
+    & p { font-size: 0.9375rem; line-height: 1.6; }
+  }
+
+  .lista-empresas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+
+  .empresa-opcion {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    inline-size: 100%;
+    padding: 0.875rem;
+    border: 1px solid var(--linea);
+    border-radius: 12px;
+    background: var(--superficie);
+    text-align: start;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+
+    &:hover, &:focus-visible { border-color: var(--marca); background: var(--marca-suave); }
+  }
+
+  .empresa-icono {
+    display: grid;
+    place-items: center;
+    flex: none;
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+    border-radius: 10px;
+    background: var(--hundido);
+    color: var(--tinta-suave);
+    & svg { inline-size: 1.25rem; block-size: 1.25rem; }
+  }
+
+  .empresa-texto { flex: 1; min-inline-size: 0; display: grid; }
+  .empresa-nombre { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empresa-detalle { font-size: 0.8125rem; color: var(--tinta-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empresa-flecha { flex: none; inline-size: 1rem; block-size: 1rem; color: var(--tinta-suave); }
+
+  .eleccion-salir { justify-self: center; }
+  .eleccion-pie { text-align: center; font-size: 0.75rem; color: var(--tinta-suave); }
+
+  /* =======================================================================================
      Google Maps: lo que se dibuja como marcador (HTML propio) y el aviso cuando no hay mapa.
      ======================================================================================= */
   .aviso-mapa {
