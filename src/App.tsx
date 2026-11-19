@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Loader2, LogOut, RotateCw } from "lucide-react";
 import { Marco } from "./componentes/Marco";
 import { LimiteErrores } from "./componentes/LimiteErrores";
-import { MarcoPaso } from "./componentes/MarcoPaso";
-import { Aviso, Cargando } from "./componentes/Basicos";
+import { AvisoPaso, MarcoPaso } from "./componentes/MarcoPaso";
 import { useSesion } from "./sesion/SesionContexto";
 import { Login } from "./paginas/Login";
 import { ElegirEmpresa } from "./paginas/ElegirEmpresa";
@@ -25,34 +25,56 @@ export default function App() {
 }
 
 function Consola() {
-  const { autenticado, sesion, errorSesion, reintentarSesion, empresaActiva, esAdministradorPlataforma, salir } = useSesion();
+  const { autenticado, correo, sesion, errorSesion, reintentarSesion, empresaActiva, esAdministradorPlataforma, salir } =
+    useSesion();
   const { pathname } = useLocation();
 
   if (!autenticado) return <Login />;
 
+  // Las pantallas de antes de la consola son las de WorkLog: error al cargar el perfil, la espera
+  // y la cuenta sin acceso.
   if (!sesion && errorSesion) {
     return (
-      <MarcoPaso titulo="No se pudo preparar la consola" descripcion={errorSesion}>
+      <MarcoPaso titulo="No pudimos cargar tu perfil" descripcion={correo}>
+        <AvisoPaso>{errorSesion}</AvisoPaso>
         <div className="paso-botones">
-          <button type="button" className="boton primario" onClick={reintentarSesion}>Reintentar</button>
-          <button type="button" className="boton" onClick={salir}>Volver al inicio de sesión</button>
+          <button type="button" className="boton primario" onClick={reintentarSesion}>
+            <RotateCw aria-hidden />
+            Reintentar
+          </button>
+          <button type="button" className="boton fantasma" onClick={salir}>
+            <LogOut aria-hidden />
+            Salir
+          </button>
         </div>
       </MarcoPaso>
     );
   }
 
-  if (!sesion) return <div className="pantalla-paso"><Cargando texto="Preparando el mapa…" /></div>;
+  if (!sesion) {
+    return (
+      <div className="marco-paso" role="status">
+        <Loader2 className="paso-girador" aria-hidden />
+        <span className="visualmente-oculto">Cargando tu perfil</span>
+      </div>
+    );
+  }
 
   if (sesion.empresas.length === 0) {
     return (
-      <Marco>
-        <div className="pagina">
-          <Aviso tipo="alerta">
-            <strong>Tu cuenta no alcanza ninguna empresa.</strong> Ninguna de tus empresas en Intechsys One tiene asignada
-            la app Geomonitoreo. Pide al administrador de la plataforma que la asigne o que te agregue a una empresa que la tenga.
-          </Aviso>
+      <MarcoPaso titulo="No tienes acceso a Track" descripcion={correo}>
+        <AvisoPaso>
+          Ninguna de las empresas a las que perteneces en One tiene asignada la app Track. Pide al
+          administrador de la plataforma que se la asigne a tu empresa o que te agregue como miembro
+          de una que ya la tenga.
+        </AvisoPaso>
+        <div className="paso-botones">
+          <button type="button" className="boton fantasma" onClick={salir}>
+            <LogOut aria-hidden />
+            Salir
+          </button>
         </div>
-      </Marco>
+      </MarcoPaso>
     );
   }
 

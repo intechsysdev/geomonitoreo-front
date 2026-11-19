@@ -1,120 +1,57 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Hexagon, LogIn, Moon, Radar, Route, Sun } from "lucide-react";
-import { ErrorDobleFactor } from "../api/cliente";
-import { useSesion } from "../sesion/SesionContexto";
-import { useTema } from "../tema/Tema";
-import { acabaDeSalir, marcarEntradaAutomatica, puedeEntrarSolo, ssoDisponible } from "../api/sso";
-import { Aviso, Cargando } from "../componentes/Basicos";
-import { Marca } from "../componentes/Marca";
+import { useEffect, useState } from "react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { acabaDeSalir, iniciarSso, marcarEntradaAutomatica, puedeEntrarSolo, ssoDisponible } from "../api/sso";
+import { AvisoPaso, MarcoPaso } from "../componentes/MarcoPaso";
 
-const PUNTOS = [
-  { x: 22, y: 30, d: 0 }, { x: 64, y: 22, d: 1.2 }, { x: 78, y: 58, d: 2.1 }, { x: 40, y: 70, d: 0.6 },
-  { x: 55, y: 44, d: 1.7 }, { x: 30, y: 52, d: 2.6 }, { x: 70, y: 80, d: 0.9 },
-];
-
+/**
+ * Login, el de WorkLog: Track no tiene cuentas propias, se entra con la de INTECHSYS ONE. One pide
+ * la contraseña y el código de la app, y devuelve aquí con la sesión.
+ */
 export function Login() {
-  const { entrar } = useSesion();
-  const { oscuro, alternar } = useTema();
-  const [correo, setCorreo] = useState("");
-  const [clave, setClave] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-  const navigate = useNavigate();
-
-  // Con sesión en One se entra sin pasar por este formulario: es el inicio de sesión único.
+  // Quien llega sin haber salido viene a usar la consola: si tiene sesión en One entra sin
+  // escribir nada. Tras salir, el botón hace que One pregunte con qué cuenta seguir.
   const [entrandoSolo] = useState(puedeEntrarSolo);
+  const [error, setError] = useState<string | null>(null);
+
+  const entrar = (elegirCuenta: boolean) =>
+    iniciarSso(null, elegirCuenta).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : "No se pudo iniciar la sesión con INTECHSYS ONE.");
+    });
+
   useEffect(() => {
     if (!entrandoSolo) return;
     marcarEntradaAutomatica();
-    navigate("/sso", { replace: true });
-  }, [entrandoSolo, navigate]);
+    void entrar(false);
+  }, [entrandoSolo]);
 
-  async function enviar(evento: FormEvent) {
-    evento.preventDefault();
-    setError(null);
-    setEnviando(true);
-    try {
-      await entrar(correo.trim(), clave);
-    } catch (e) {
-      // Con verificación en dos pasos se entra por One, que pide el código de la app.
-      if (e instanceof ErrorDobleFactor && ssoDisponible()) {
-        navigate("/sso", { replace: true });
-        return;
-      }
-      setError(e instanceof Error ? e.message : "No se pudo entrar. Intenta de nuevo.");
-    } finally {
-      setEnviando(false);
-    }
+  if (!ssoDisponible()) {
+    return (
+      <MarcoPaso titulo="Falta configurar el acceso">
+        <AvisoPaso>
+          Define <code>VITE_ONE_URL</code> y <code>VITE_ONE_PORTAL_URL</code> para entrar con INTECHSYS ONE.
+        </AvisoPaso>
+      </MarcoPaso>
+    );
   }
 
-  if (entrandoSolo) return <Cargando texto="Conectando con One…" />;
+  const conectando = entrandoSolo && !error;
 
   return (
-    <div className="ingreso">
-      <section className="ingreso-escena" aria-hidden>
-        <div className="radar">
-          <div className="radar-barrido" />
-          {PUNTOS.map((p, i) => (
-            <span key={i} className="radar-punto" style={{ left: `${p.x}%`, top: `${p.y}%`, animationDelay: `${p.d}s` }} />
-          ))}
-        </div>
-        <div className="ingreso-mensaje">
-          <h2>Tu flota, en el mapa y en vivo.</h2>
-          <ul>
-            <li><Radar /> Estado y ubicación de cada equipo de MobiControl</li>
-            <li><Route /> Recorridos con paradas, velocidad y reproducción</li>
-            <li><Hexagon /> Geocercas: quién está dentro de cada zona</li>
-          </ul>
-        </div>
-      </section>
-
-      <main className="ingreso-panel">
-        <div className="ingreso-arriba">
-          <span className="marca-texto">
-            {/* Horizontal si el panel tiene lugar; si no, la compacta. El CSS elige. */}
-            <Marca pieza="logo" className="marca-ancha" />
-            <Marca pieza="marca" className="marca-compacta" />
-            Track
-          </span>
-          <button type="button" className="boton fantasma icono" onClick={alternar} aria-label={oscuro ? "Usar tema claro" : "Usar tema oscuro"}>
-            {oscuro ? <Sun aria-hidden /> : <Moon aria-hidden />}
-          </button>
-        </div>
-
-        <form className="ingreso-formulario" onSubmit={enviar}>
-          <div>
-            <h1>Iniciar sesión</h1>
-            <p className="suave">Con tu cuenta de Intechsys One.</p>
-          </div>
-
-          {ssoDisponible() && (
-            <>
-              <Link to={acabaDeSalir() ? "/sso?cuenta=elegir" : "/sso"} className="boton primario ancho grande">
-                <LogIn aria-hidden /> Entrar con One
-              </Link>
-              <div className="separador"><span>o con tu correo</span></div>
-            </>
-          )}
-
-          {error && <Aviso tipo="error">{error}</Aviso>}
-
-          <label className="etiqueta">
-            Correo
-            <input className="campo" type="email" autoComplete="username" required value={correo} onChange={(e) => setCorreo(e.target.value)} />
-          </label>
-          <label className="etiqueta">
-            Contraseña
-            <input className="campo" type="password" autoComplete="current-password" required value={clave} onChange={(e) => setClave(e.target.value)} />
-          </label>
-
-          <button type="submit" className="boton ancho grande" disabled={enviando}>
-            {enviando ? "Entrando…" : "Entrar"}
-          </button>
-        </form>
-
-        <p className="suave chico ingreso-pie">Intechsys · Track</p>
-      </main>
-    </div>
+    <MarcoPaso
+      titulo={conectando ? "Conectando con INTECHSYS ONE…" : "Bienvenido a Track"}
+      descripcion="Entra con tu cuenta de INTECHSYS ONE. Es la misma de las demás aplicaciones de tu empresa."
+    >
+      {error && <AvisoPaso>{error}</AvisoPaso>}
+      <button
+        type="button"
+        className="boton primario grande"
+        disabled={conectando}
+        aria-busy={conectando || undefined}
+        onClick={() => void entrar(acabaDeSalir())}
+      >
+        {conectando ? <Loader2 className="girando" aria-hidden /> : <ArrowRight aria-hidden />}
+        Entrar con INTECHSYS ONE
+      </button>
+    </MarcoPaso>
   );
 }

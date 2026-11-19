@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { avisarAlPerderSesion, iniciarSesion, revocarSesion, verificarSesion } from "../api/cliente";
+import { avisarAlPerderSesion, revocarSesion, verificarSesion } from "../api/cliente";
 import { borrarSesion, escucharOtrasPestanas, fijarTenant, leerSesion } from "../api/sesionAlmacenada";
 import { obtenerSesion } from "../api/plataforma";
 import type { EmpresaAccesible, Sesion } from "../api/plataforma";
-import { marcarSalida, olvidarMarcasDeSalida } from "../api/sso";
+import { marcarSalida } from "../api/sso";
 
 interface Contexto {
   correo: string | null;
@@ -16,7 +16,6 @@ interface Contexto {
   reintentarSesion: () => void;
   empresaActiva: EmpresaAccesible | null;
   esAdministradorPlataforma: boolean;
-  entrar: (correo: string, clave: string) => Promise<void>;
   cambiarEmpresa: (tenantId: string) => void;
   salir: () => void;
 }
@@ -128,12 +127,6 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
     setIntento((n) => n + 1);
   }, []);
 
-  const entrar = useCallback(async (nuevoCorreo: string, clave: string) => {
-    await iniciarSesion(nuevoCorreo, clave);
-    olvidarMarcasDeSalida();
-    setCorreo(nuevoCorreo);
-  }, []);
-
   const cambiarEmpresa = useCallback((nuevo: string) => {
     setTenantId(nuevo);
     fijarTenant(nuevo);
@@ -150,11 +143,10 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       reintentarSesion,
       empresaActiva,
       esAdministradorPlataforma: sesion?.esAdministradorPlataforma ?? false,
-      entrar,
       cambiarEmpresa,
       salir,
     };
-  }, [correo, sesion, errorSesion, reintentarSesion, tenantId, entrar, cambiarEmpresa, salir]);
+  }, [correo, sesion, errorSesion, reintentarSesion, tenantId, cambiarEmpresa, salir]);
 
   return <SesionContexto.Provider value={valor}>{children}</SesionContexto.Provider>;
 }

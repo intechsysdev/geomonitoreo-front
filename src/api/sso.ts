@@ -48,7 +48,7 @@ export const ssoDisponible = () => PORTAL !== "" && ONE !== "";
 
 /**
  * "Salir" de la consola no cierra la sesión del portal de One. Sin esta marca, el login entraría
- * solo otra vez con ella en ese mismo instante; con ella se muestra el login y "Entrar con One"
+ * solo otra vez con ella en ese mismo instante; con ella se muestra el login y "Entrar con INTECHSYS ONE"
  * pregunta con qué cuenta seguir. Vive en sessionStorage: muere con la pestaña.
  */
 const CLAVE_SALIDA = "geo.sso.salio";
