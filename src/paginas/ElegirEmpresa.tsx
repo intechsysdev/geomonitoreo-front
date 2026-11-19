@@ -1,8 +1,7 @@
-import { useEffect, useRef } from "react";
 import { Building2, ChevronRight, LogOut } from "lucide-react";
 import type { EmpresaAccesible } from "../api/plataforma";
 import { useSesion } from "../sesion/SesionContexto";
-import { Marca } from "../componentes/Marco";
+import { MarcoPaso } from "../componentes/MarcoPaso";
 
 /** One manda el rol con el nombre de su enumeración; aquí se muestra como lo nombra One. */
 const ROLES: Record<string, string> = {
@@ -28,54 +27,34 @@ function detalle(empresa: EmpresaAccesible): string | null {
  */
 export function ElegirEmpresa() {
   const { sesion, cambiarEmpresa, salir } = useSesion();
-  const titulo = useRef<HTMLHeadingElement>(null);
-
-  // El lector de pantalla anuncia la pantalla nueva y Tab sigue con la primera empresa.
-  useEffect(() => {
-    titulo.current?.focus();
-  }, []);
 
   return (
-    <main className="pantalla-paso">
-      <div className="eleccion">
-        <span className="marca-texto">
-          {/* El logo de la entrada: horizontal si hay lugar; si no, la compacta. El CSS elige. */}
-          <Marca pieza="logo" className="marca-ancha" />
-          <Marca pieza="marca" className="marca-compacta" />
-          Geomonitoreo
-        </span>
+    <MarcoPaso
+      enfocarTitulo
+      titulo="¿Con qué empresa vas a trabajar?"
+      descripcion="Tienes acceso a Track en varias empresas. Puedes cambiar luego desde tu menú."
+    >
+      <ul className="lista-empresas">
+        {(sesion?.empresas ?? []).map((empresa) => {
+          const extra = detalle(empresa);
+          return (
+            <li key={empresa.oneTenantId}>
+              <button type="button" className="empresa-opcion" onClick={() => cambiarEmpresa(empresa.oneTenantId)}>
+                <span className="empresa-icono" aria-hidden><Building2 /></span>
+                <span className="empresa-texto">
+                  <span className="empresa-nombre" title={empresa.nombre}>{empresa.nombre}</span>
+                  {extra && <span className="empresa-detalle">{extra}</span>}
+                </span>
+                <ChevronRight className="empresa-flecha" aria-hidden />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
 
-        <section className="eleccion-tarjeta tarjeta" aria-labelledby="eleccion-titulo">
-          <div className="eleccion-cabeza">
-            <h1 id="eleccion-titulo" ref={titulo} tabIndex={-1}>¿Con qué empresa vas a trabajar?</h1>
-            <p className="suave">Tienes acceso a Geomonitoreo en varias empresas. Puedes cambiarla luego desde el menú.</p>
-          </div>
-
-          <ul className="lista-empresas">
-            {(sesion?.empresas ?? []).map((empresa) => {
-              const extra = detalle(empresa);
-              return (
-                <li key={empresa.oneTenantId}>
-                  <button type="button" className="empresa-opcion" onClick={() => cambiarEmpresa(empresa.oneTenantId)}>
-                    <span className="empresa-icono" aria-hidden><Building2 /></span>
-                    <span className="empresa-texto">
-                      <span className="empresa-nombre" title={empresa.nombre}>{empresa.nombre}</span>
-                      {extra && <span className="empresa-detalle">{extra}</span>}
-                    </span>
-                    <ChevronRight className="empresa-flecha" aria-hidden />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          <button type="button" className="boton fantasma eleccion-salir" onClick={salir}>
-            <LogOut aria-hidden /> Salir
-          </button>
-        </section>
-
-        <p className="eleccion-pie">INTECHSYS ONE · Geomonitoreo</p>
-      </div>
-    </main>
+      <button type="button" className="boton fantasma" onClick={salir}>
+        <LogOut aria-hidden /> Salir
+      </button>
+    </MarcoPaso>
   );
 }

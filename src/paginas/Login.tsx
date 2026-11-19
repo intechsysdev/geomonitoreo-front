@@ -6,7 +6,7 @@ import { useSesion } from "../sesion/SesionContexto";
 import { useTema } from "../tema/Tema";
 import { acabaDeSalir, marcarEntradaAutomatica, puedeEntrarSolo, ssoDisponible } from "../api/sso";
 import { Aviso, Cargando } from "../componentes/Basicos";
-import { Marca } from "../componentes/Marco";
+import { Marca } from "../componentes/Marca";
 
 const PUNTOS = [
   { x: 22, y: 30, d: 0 }, { x: 64, y: 22, d: 1.2 }, { x: 78, y: 58, d: 2.1 }, { x: 40, y: 70, d: 0.6 },
@@ -75,7 +75,7 @@ export function Login() {
             {/* Horizontal si el panel tiene lugar; si no, la compacta. El CSS elige. */}
             <Marca pieza="logo" className="marca-ancha" />
             <Marca pieza="marca" className="marca-compacta" />
-            Geomonitoreo
+            Track
           </span>
           <button type="button" className="boton fantasma icono" onClick={alternar} aria-label={oscuro ? "Usar tema claro" : "Usar tema oscuro"}>
             {oscuro ? <Sun aria-hidden /> : <Moon aria-hidden />}
@@ -113,7 +113,7 @@ export function Login() {
           </button>
         </form>
 
-        <p className="suave chico ingreso-pie">Intechsys · Geomonitoreo de dispositivos</p>
+        <p className="suave chico ingreso-pie">Intechsys · Track</p>
       </main>
     </div>
   );

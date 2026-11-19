@@ -515,7 +515,7 @@ export function Geocercas() {
         }
       >
         <p>
-          Se elimina <strong>{aBorrar?.nombre}</strong> de Geomonitoreo{aBorrar?.enMobiControl ? " y de MobiControl" : ""}.
+          Se elimina <strong>{aBorrar?.nombre}</strong> de Track{aBorrar?.enMobiControl ? " y de MobiControl" : ""}.
           {aBorrar?.enMobiControl && " Las reglas de la consola que la usen dejarán de tenerla."} Si solo quieres dejar de
           usarla aquí, desactívala desde Editar.
         </p>

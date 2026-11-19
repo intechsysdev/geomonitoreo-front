@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Hexagon, Link2, LogOut, Menu, Moon, Radar, Route, Smartphone, Sun, X, type LucideIcon } from "lucide-react";
 import { useSesion } from "../sesion/SesionContexto";
 import { useTema } from "../tema/Tema";
+import { MarcaProducto } from "./Marca";
 
 interface Entrada {
   a: string;
@@ -28,36 +29,16 @@ const GRUPOS: { titulo: string; entradas: Entrada[] }[] = [
   },
 ];
 
-/** Proporciones de los SVG de la marca, para que el lugar quede reservado antes de que carguen. */
-const PIEZAS = {
-  /** Horizontal, sin lema: para la pantalla de entrada (no menos de 360 px de ancho). */
-  logo: { ancho: 942, alto: 342 },
-  /** Compacta (isotipo + "one"), vertical: para el menú y los espacios chicos. */
-  marca: { ancho: 545, alto: 757 },
-};
-
-/**
- * Marca oficial de INTECHSYS ONE. Va en sus dos variantes y el CSS muestra la del tema (el del
- * sistema o el fijado en data-tema), así no hay que esperar a React para elegirla. Es una
- * imagen y no SVG en línea: los ids internos de los archivos chocarían entre sí.
- */
-export function Marca({ pieza, alt = "INTECHSYS ONE", className }: { pieza: keyof typeof PIEZAS; alt?: string; className?: string }) {
-  const { ancho, alto } = PIEZAS[pieza];
-  return (
-    <span className={className ? `marca-oficial ${className}` : "marca-oficial"}>
-      <img src={`/marca/${pieza}.svg`} width={ancho} height={alto} alt={alt} className="variante-clara" />
-      <img src={`/marca/${pieza}-oscuro.svg`} width={ancho} height={alto} alt={alt} className="variante-oscura" />
-    </span>
-  );
-}
-
-/** Solo con varias empresas: con una, su nombre ya va junto a la marca. */
+/** La empresa activa, bajo la marca: con varias, el selector para cambiarla; con una, su nombre. */
 function SelectorEmpresa() {
   const { sesion, empresaActiva, cambiarEmpresa } = useSesion();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  if (!sesion || sesion.empresas.length < 2) return null;
+  if (!sesion) return null;
+  if (sesion.empresas.length < 2) {
+    return empresaActiva && <p className="menu-empresa" title={empresaActiva.nombre}>{empresaActiva.nombre}</p>;
+  }
 
   return (
     <select
@@ -84,7 +65,7 @@ function SelectorEmpresa() {
  * cerrar y lo cierra al elegir una entrada.
  */
 function MenuLateral({ alCerrar }: { alCerrar?: () => void }) {
-  const { correo, sesion, empresaActiva, esAdministradorPlataforma, salir } = useSesion();
+  const { correo, sesion, esAdministradorPlataforma, salir } = useSesion();
   const { oscuro, alternar } = useTema();
   const nombre = sesion?.nombre ?? null;
   const inicial = (nombre ?? correo ?? "?").trim().charAt(0).toUpperCase();
@@ -97,13 +78,9 @@ function MenuLateral({ alCerrar }: { alCerrar?: () => void }) {
     <div className="menu-contenido">
       <div className="menu-arriba">
         <div className="menu-marca">
-          <Link to="/monitor" className="menu-logo" aria-label="Geomonitoreo · INTECHSYS ONE" onClick={alCerrar}>
-            <Marca pieza="marca" alt="" />
+          <Link to="/monitor" className="menu-logo lugar-marca" aria-label="Track · INTECHSYS ONE" onClick={alCerrar}>
+            <MarcaProducto />
           </Link>
-          <p className="menu-producto">
-            <strong>Geomonitoreo</strong>
-            {empresaActiva && <span>{empresaActiva.nombre}</span>}
-          </p>
           {alCerrar && (
             <button type="button" className="boton fantasma chico icono menu-cerrar" aria-label="Cerrar menú" onClick={alCerrar}>
               <X aria-hidden />
@@ -221,8 +198,9 @@ export function Marco({ children }: { children: ReactNode }) {
         >
           {menuAbierto ? <X aria-hidden /> : <Menu aria-hidden />}
         </button>
-        <Marca pieza="marca" />
-        <span className="barra-movil-nombre">Geomonitoreo</span>
+        <div className="lugar-marca">
+          <MarcaProducto />
+        </div>
       </header>
 
       <dialog

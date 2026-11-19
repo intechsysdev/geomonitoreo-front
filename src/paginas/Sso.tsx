@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { completarSso, iniciarSso, ssoDisponible } from "../api/sso";
 import { Cargando } from "../componentes/Basicos";
+import { MarcoPaso } from "../componentes/MarcoPaso";
 
 /**
  * Ruta de inicio que se registra en One como "URL de inicio" de la app. Es a donde lleva la
@@ -59,12 +60,10 @@ function Paso({ texto }: { texto: string }) {
 
 function Fallo({ mensaje }: { mensaje: string }) {
   return (
-    <div className="pantalla-paso">
-      <div className="paso-sso tarjeta">
-        <h2>No se pudo entrar con One</h2>
-        <p className="suave">{mensaje}</p>
+    <MarcoPaso titulo="No se pudo entrar con One" descripcion={mensaje}>
+      <div className="paso-botones">
         <Link to="/" className="boton">Ir al inicio de sesión</Link>
       </div>
-    </div>
+    </MarcoPaso>
   );
 }

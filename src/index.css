@@ -24,6 +24,10 @@
      sobre el gris profundo (el rojo principal no llega a 4,5:1 como texto). */
   --marca-texto-claro: var(--marca-intensa);
   --marca-texto-oscuro: #ff5c7f;
+  /* El "one" escrito de la marca del producto (como en WorkLog): el rojo principal de día; de
+     noche, uno más claro. */
+  --logotipo-claro: var(--marca-viva);
+  --logotipo-oscuro: #ff4f74;
   /* La barra de la guía de marca: profundo → vivo → profundo. */
   --marca-banda: linear-gradient(90deg, var(--marca-profunda), var(--marca-viva) 50%, var(--marca-profunda));
 
@@ -56,6 +60,7 @@
   /* El rojo principal es el mismo en los dos temas; lo que cambia es el texto de acento. */
   --marca: var(--marca-viva);
   --marca-texto: var(--marca-texto-claro);
+  --logotipo: var(--logotipo-claro);
   --ok: var(--ok-claro);
   --aviso: var(--aviso-claro);
   --peligro: var(--peligro-claro);
@@ -69,6 +74,7 @@
 
   @media (prefers-color-scheme: dark) {
     --marca-texto: var(--marca-texto-oscuro);
+    --logotipo: var(--logotipo-oscuro);
     --ok: var(--ok-oscuro);
     --aviso: var(--aviso-oscuro);
     --peligro: var(--peligro-oscuro);
@@ -83,6 +89,7 @@
 
   @supports (color: light-dark(white, black)) {
     --marca-texto: light-dark(var(--marca-texto-claro), var(--marca-texto-oscuro));
+    --logotipo: light-dark(var(--logotipo-claro), var(--logotipo-oscuro));
     --ok: light-dark(var(--ok-claro), var(--ok-oscuro));
     --aviso: light-dark(var(--aviso-claro), var(--aviso-oscuro));
     --peligro: light-dark(var(--peligro-claro), var(--peligro-oscuro));
@@ -120,13 +127,13 @@
 /* Sin light-dark(), el tema fijado se aplica con las variables a mano. */
 @supports not (color: light-dark(white, black)) {
   :root[data-tema="dark"] {
-    --marca-texto: var(--marca-texto-oscuro); --ok: var(--ok-oscuro); --aviso: var(--aviso-oscuro);
+    --marca-texto: var(--marca-texto-oscuro); --logotipo: var(--logotipo-oscuro); --ok: var(--ok-oscuro); --aviso: var(--aviso-oscuro);
     --peligro: var(--peligro-oscuro); --apagado: var(--apagado-oscuro); --fondo: var(--fondo-oscuro);
     --superficie: var(--superficie-oscuro); --hundido: var(--hundido-oscuro); --tinta: var(--tinta-oscuro);
     --tinta-suave: var(--tinta-suave-oscuro); --linea: var(--linea-oscuro);
   }
   :root[data-tema="light"] {
-    --marca-texto: var(--marca-texto-claro); --ok: var(--ok-claro); --aviso: var(--aviso-claro);
+    --marca-texto: var(--marca-texto-claro); --logotipo: var(--logotipo-claro); --ok: var(--ok-claro); --aviso: var(--aviso-claro);
     --peligro: var(--peligro-claro); --apagado: var(--apagado-claro); --fondo: var(--fondo-claro);
     --superficie: var(--superficie-claro); --hundido: var(--hundido-claro); --tinta: var(--tinta-claro);
     --tinta-suave: var(--tinta-suave-claro); --linea: var(--linea-claro);

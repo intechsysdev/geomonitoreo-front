@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Marco } from "./componentes/Marco";
 import { LimiteErrores } from "./componentes/LimiteErrores";
+import { MarcoPaso } from "./componentes/MarcoPaso";
 import { Aviso, Cargando } from "./componentes/Basicos";
 import { useSesion } from "./sesion/SesionContexto";
 import { Login } from "./paginas/Login";
@@ -31,16 +32,12 @@ function Consola() {
 
   if (!sesion && errorSesion) {
     return (
-      <div className="pantalla-paso">
-        <div className="paso-sso tarjeta">
-          <h2>No se pudo preparar la consola</h2>
-          <p className="suave">{errorSesion}</p>
-          <div className="fila-botones">
-            <button type="button" className="boton primario" onClick={reintentarSesion}>Reintentar</button>
-            <button type="button" className="boton" onClick={salir}>Volver al inicio de sesión</button>
-          </div>
+      <MarcoPaso titulo="No se pudo preparar la consola" descripcion={errorSesion}>
+        <div className="paso-botones">
+          <button type="button" className="boton primario" onClick={reintentarSesion}>Reintentar</button>
+          <button type="button" className="boton" onClick={salir}>Volver al inicio de sesión</button>
         </div>
-      </div>
+      </MarcoPaso>
     );
   }
 
