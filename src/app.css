@@ -27,8 +27,8 @@
   }
 
   /* =======================================================================================
-     Marco: el menú en un panel a la izquierda (el mismo de One) + contenido, que es lo único que
-     hace scroll. En pantallas angostas, barra arriba y el menú en un cajón.
+     Marco: el menú en un panel a la izquierda (el mismo de WorkLog) + contenido, que es lo único
+     que hace scroll. En pantallas angostas, barra arriba y el menú en un cajón.
      ======================================================================================= */
   .marco {
     display: grid;
@@ -37,10 +37,59 @@
     overflow: hidden;
   }
 
+  /* El panel es el de WorkLog, la base de INTECHSYS ONE, con sus medidas y sus colores exactos: la
+     marca, las secciones y, al pie, el menú de la cuenta. Los colores de WorkLog van en tokens
+     propios (--wl-*) y los de la marca del producto se redefinen con ellos. */
+  .menu-lateral,
+  .cajon-menu {
+    --wl-elevada: light-dark(#ffffff, #222220);
+    --wl-flotante: light-dark(#ffffff, #2a2a28);
+    --wl-hundida: light-dark(#f5f5f4, #1c1c1b);
+    --wl-linea: light-dark(#e2e2e1, #353533);
+    --wl-tinta: light-dark(#1e1f1d, #f3f2ef);
+    --wl-tinta-media: light-dark(#3c3c3b, #d2d0cc);
+    --wl-tinta-suave: light-dark(#5a5958, #a3a19d);
+    --wl-acento: light-dark(#af1839, #ff6b8b);
+    --wl-acento-tenue: light-dark(#fbe9ee, #3a1620);
+    --wl-critico: light-dark(#751326, #ff7c97);
+    --wl-critico-tenue: light-dark(#fbe9ee, #3d1520);
+    --wl-sombra-1: light-dark(hsl(30 6% 15% / 0.08), rgb(0 0 0 / 0.08));
+    --wl-sombra-2: light-dark(hsl(30 6% 15% / 0.28), rgb(0 0 0 / 0.28));
+    --wl-sombra: 0 4px 8px var(--wl-sombra-1), 0 24px 64px -12px var(--wl-sombra-2);
+    --linea: var(--wl-linea);
+    --tinta: var(--wl-tinta);
+    --tinta-suave: var(--wl-tinta-suave);
+  }
+
+  /* Sin light-dark(), los mismos valores por tema, como los tokens de index.css. */
+  @supports not (color: light-dark(white, black)) {
+    .menu-lateral,
+    .cajon-menu {
+      --wl-elevada: #ffffff; --wl-flotante: #ffffff; --wl-hundida: #f5f5f4; --wl-linea: #e2e2e1;
+      --wl-tinta: #1e1f1d; --wl-tinta-media: #3c3c3b; --wl-tinta-suave: #5a5958;
+      --wl-acento: #af1839; --wl-acento-tenue: #fbe9ee; --wl-critico: #751326; --wl-critico-tenue: #fbe9ee;
+      --wl-sombra-1: hsl(30 6% 15% / 0.08); --wl-sombra-2: hsl(30 6% 15% / 0.28);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-tema="light"]) :is(.menu-lateral, .cajon-menu) {
+        --wl-elevada: #222220; --wl-flotante: #2a2a28; --wl-hundida: #1c1c1b; --wl-linea: #353533;
+        --wl-tinta: #f3f2ef; --wl-tinta-media: #d2d0cc; --wl-tinta-suave: #a3a19d;
+        --wl-acento: #ff6b8b; --wl-acento-tenue: #3a1620; --wl-critico: #ff7c97; --wl-critico-tenue: #3d1520;
+        --wl-sombra-1: rgb(0 0 0 / 0.08); --wl-sombra-2: rgb(0 0 0 / 0.28);
+      }
+    }
+    :root[data-tema="dark"] :is(.menu-lateral, .cajon-menu) {
+      --wl-elevada: #222220; --wl-flotante: #2a2a28; --wl-hundida: #1c1c1b; --wl-linea: #353533;
+      --wl-tinta: #f3f2ef; --wl-tinta-media: #d2d0cc; --wl-tinta-suave: #a3a19d;
+      --wl-acento: #ff6b8b; --wl-acento-tenue: #3a1620; --wl-critico: #ff7c97; --wl-critico-tenue: #3d1520;
+      --wl-sombra-1: rgb(0 0 0 / 0.08); --wl-sombra-2: rgb(0 0 0 / 0.28);
+    }
+  }
+
   .menu-lateral {
     min-block-size: 0;
-    background: var(--fondo);
-    border-inline-end: 1px solid var(--linea);
+    background: var(--wl-elevada);
+    border-inline-end: 1px solid var(--wl-linea);
     z-index: 5;
   }
 
@@ -48,116 +97,179 @@
   .menu-contenido {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 24px;
     block-size: 100%;
-    padding: 1rem 0.75rem;
+    padding: 24px 16px;
+    color: var(--wl-tinta);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .menu-marca { display: flex; align-items: center; gap: 12px; padding-inline: 4px; }
+  .menu-logo { border-radius: var(--radio-chico); text-decoration: none; }
+  .menu-cerrar { flex: none; margin-inline-end: -4px; }
+
+  /* Las secciones se desplazan si no caben; el menú de la cuenta queda siempre al pie. */
+  .menu-cuerpo { display: flex; flex-direction: column; flex: 1; min-block-size: 0; gap: 16px; }
+
+  .menu-secciones {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-block-size: 0;
+    gap: 18px;
     overflow-y: auto;
     scrollbar-width: thin;
   }
 
-  .menu-arriba { display: grid; gap: 0.75rem; }
-
-  .menu-marca { display: flex; align-items: center; gap: 0.75rem; padding: 0.25rem 0.75rem; }
-  .menu-logo { border-radius: var(--radio-chico); text-decoration: none; }
-  .menu-cerrar { flex: none; margin-inline-end: -0.5rem; }
-
-  /* Con una sola empresa, su nombre; con varias, el selector. */
-  .menu-empresa {
-    padding-inline: 0.75rem;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--tinta-suave);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .selector-empresa { font-size: 0.8125rem; font-weight: 600; }
-
-  .menu-secciones { display: grid; align-content: start; gap: 1.5rem; }
-  .menu-grupo { display: grid; gap: 0.25rem; }
-  .menu-grupo ul { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+  .menu-grupo { display: flex; flex-direction: column; gap: 2px; }
+  .menu-grupo ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
 
   .menu-titulo {
-    padding: 0 0.75rem 0.25rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
+    margin: 0;
+    padding: 0 12px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--tinta-suave);
+    color: var(--wl-tinta-suave);
   }
 
   .menu-enlace {
-    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 10px;
+    min-block-size: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: var(--wl-tinta-media);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-decoration: none;
+    transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .menu-enlace svg { flex: none; inline-size: 16px; block-size: 16px; opacity: 0.8; }
+  .menu-enlace:not(.active):hover { background: var(--wl-hundida); color: var(--wl-tinta); }
+  .menu-enlace.active { background: var(--wl-acento-tenue); font-weight: 600; color: var(--wl-acento); }
+
+  .menu-pie { padding-block-start: 12px; border-block-start: 1px solid var(--wl-linea); }
+
+  /* Menú de la cuenta (el UserMenu de WorkLog). */
+  .menu-usuario { position: relative; }
+
+  .menu-usuario-boton {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     inline-size: 100%;
-    padding: 0.5rem 0.75rem;
+    padding: 8px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--wl-tinta);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .menu-usuario-boton:hover,
+  .menu-usuario-boton[aria-expanded="true"] { border-color: var(--wl-linea); background: var(--wl-hundida); }
+  .menu-usuario-boton > svg { flex: none; inline-size: 16px; block-size: 16px; color: var(--wl-tinta-suave); }
+
+  .menu-usuario-avatar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 32px;
+    block-size: 32px;
+    border-radius: 999px;
+    background: #af1839;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    letter-spacing: -0.025em;
+  }
+
+  .menu-usuario-texto { display: flex; flex-direction: column; flex: 1; min-inline-size: 0; }
+  .menu-usuario-nombre,
+  .menu-usuario-detalle { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-usuario-nombre { font-size: 14px; font-weight: 600; line-height: 20px; color: var(--wl-tinta); }
+  .menu-usuario-detalle { font-size: 12px; font-weight: 400; line-height: 18px; color: var(--wl-tinta-suave); }
+
+  /* Se abre hacia arriba, a todo el ancho del botón. */
+  .menu-usuario-lista {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-end: 100%;
+    z-index: 40;
+    inline-size: 100%;
+    min-inline-size: 224px;
+    margin-block-end: 8px;
+    padding: 4px;
+    overflow: hidden;
+    border: 1px solid var(--wl-linea);
+    border-radius: 12px;
+    background: var(--wl-flotante);
+    box-shadow: var(--wl-sombra);
+    animation: menu-usuario-entra 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes menu-usuario-entra { from { opacity: 0; transform: translateY(4px) scale(0.98); } }
+  @media (prefers-reduced-motion: reduce) { .menu-usuario-lista { animation: none; } }
+
+  .menu-usuario-cabeza { padding: 8px 10px; }
+  .menu-usuario-lista hr { block-size: 1px; margin: 4px 0; border: 0; background: var(--wl-linea); }
+
+  .menu-usuario-etiqueta {
+    margin: 0;
+    padding: 6px 10px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--wl-tinta-suave);
+  }
+
+  .menu-usuario-opcion {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    inline-size: 100%;
+    padding: 8px 10px;
     border: 0;
     border-radius: 8px;
     background: transparent;
-    color: var(--tinta-suave);
-    font-size: 0.84375rem;
-    font-weight: 500;
-    line-height: 1.4;
+    color: var(--wl-tinta-media);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
     text-align: start;
-    text-decoration: none;
     cursor: pointer;
-    transition: background-color 0.15s, color 0.15s;
-
-    & svg { inline-size: 1.125rem; block-size: 1.125rem; flex: none; }
-    &:not(.active):hover { background: var(--hundido); color: var(--tinta); }
-
-    /* La activa: fondo de acento suave, texto de acento y una barrita pegada al borde. */
-    &.active {
-      background: var(--marca-suave);
-      color: var(--marca-texto);
-
-      &::before {
-        content: "";
-        position: absolute;
-        inset-inline-start: 0;
-        inline-size: 2px;
-        block-size: 1.25rem;
-        border-radius: 0 2px 2px 0;
-        background: var(--marca);
-      }
-    }
+    outline: none;
+    transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .menu-pie {
-    margin-block-start: auto;
-    display: grid;
-    gap: 0.25rem;
-    padding-block-start: 0.75rem;
-    border-block-start: 1px solid var(--linea);
-  }
-
-  .menu-usuario { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0.75rem; }
-
-  .menu-usuario-texto {
-    min-inline-size: 0;
-    display: grid;
-    line-height: 1.3;
-
-    & > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    & strong { font-size: 0.8125rem; font-weight: 600; }
-    & span { font-size: 0.75rem; color: var(--tinta-suave); }
-  }
-
-  .avatar {
-    display: grid;
-    place-items: center;
-    flex: none;
-    inline-size: 2rem;
-    block-size: 2rem;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--marca-viva), var(--marca-profunda));
-    color: white;
-    font-size: 0.8125rem;
-    font-weight: 700;
-  }
+  .menu-usuario-opcion svg { flex: none; inline-size: 16px; block-size: 16px; }
+  .menu-usuario-opcion span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-usuario-opcion:hover,
+  .menu-usuario-opcion:focus { background: var(--wl-hundida); color: var(--wl-tinta); }
+  .menu-usuario-opcion[aria-current="true"] { font-weight: 600; color: var(--wl-tinta); }
+  .menu-usuario-opcion[aria-current="true"] svg { color: var(--wl-acento); }
+  .menu-usuario-peligro,
+  .menu-usuario-peligro:hover,
+  .menu-usuario-peligro:focus { color: var(--wl-critico); }
+  .menu-usuario-peligro:hover,
+  .menu-usuario-peligro:focus { background: var(--wl-critico-tenue); }
 
   /* Pantallas angostas: barra arriba con el botón del menú. */
   .barra-movil {
@@ -199,9 +311,9 @@
     margin: 0;
     padding: 0;
     border: 0;
-    border-inline-end: 1px solid var(--linea);
-    background: var(--fondo);
-    color: var(--tinta);
+    border-inline-end: 1px solid var(--wl-linea);
+    background: var(--wl-elevada);
+    color: var(--wl-tinta);
     box-shadow: var(--sombra-alta);
     overflow: hidden;
     opacity: 0;

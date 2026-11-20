@@ -1,29 +1,22 @@
 import { Building2, ChevronRight, LogOut } from "lucide-react";
 import type { EmpresaAccesible } from "../api/plataforma";
 import { useSesion } from "../sesion/SesionContexto";
+import { nombreRol } from "../sesion/roles";
 import { MarcoPaso } from "../componentes/MarcoPaso";
-
-/** One manda el rol con el nombre de su enumeración; aquí se muestra como lo nombra One. */
-const ROLES: Record<string, string> = {
-  Owner: "Propietario",
-  Admin: "Administrador",
-  Member: "Miembro",
-  Viewer: "Observador",
-};
 
 /**
  * Lo que ayuda a distinguir una empresa de otra con nombre parecido: el rol que tiene en ella o,
  * si no es miembro (el administrador de plataforma las ve todas), su identificador en One.
  */
 function detalle(empresa: EmpresaAccesible): string | null {
-  if (empresa.rol) return `Rol en ONE: ${ROLES[empresa.rol] ?? empresa.rol}`;
+  if (empresa.rol) return `Rol en ONE: ${nombreRol(empresa.rol)}`;
   return empresa.slug || null;
 }
 
 /**
  * Con varias empresas y ninguna elegida (o la guardada ya no está a su alcance) se pregunta con
  * cuál trabajar antes de entrar a la consola: elegir una a ciegas mostraría la flota de otra.
- * Luego se cambia desde el selector del menú.
+ * Luego se cambia desde el menú de la cuenta.
  */
 export function ElegirEmpresa() {
   const { sesion, cambiarEmpresa, salir } = useSesion();

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Hexagon, Link2, LogOut, Menu, Moon, Radar, Route, Smartphone, Sun, X, type LucideIcon } from "lucide-react";
+import { Hexagon, Link2, Menu, Radar, Route, Smartphone, X, type LucideIcon } from "lucide-react";
 import { useSesion } from "../sesion/SesionContexto";
+import { nombreRol } from "../sesion/roles";
 import { useTema } from "../tema/Tema";
 import { MarcaProducto } from "./Marca";
+import { MenuUsuario } from "./MenuUsuario";
 
 interface Entrada {
   a: string;
@@ -29,101 +31,75 @@ const GRUPOS: { titulo: string; entradas: Entrada[] }[] = [
   },
 ];
 
-/** La empresa activa, bajo la marca: con varias, el selector para cambiarla; con una, su nombre. */
-function SelectorEmpresa() {
-  const { sesion, empresaActiva, cambiarEmpresa } = useSesion();
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-
-  if (!sesion) return null;
-  if (sesion.empresas.length < 2) {
-    return empresaActiva && <p className="menu-empresa" title={empresaActiva.nombre}>{empresaActiva.nombre}</p>;
-  }
-
-  return (
-    <select
-      className="campo selector-empresa"
-      aria-label="Empresa"
-      value={empresaActiva?.oneTenantId ?? ""}
-      onChange={(e) => {
-        cambiarEmpresa(e.target.value);
-        // Lo abierto (un equipo, una geocerca) es de la empresa anterior.
-        if (pathname !== "/monitor") navigate(pathname, { replace: true });
-      }}
-    >
-      <option value="" disabled>Elige una empresa</option>
-      {sesion.empresas.map((e) => (
-        <option key={e.oneTenantId} value={e.oneTenantId}>{e.nombre}</option>
-      ))}
-    </select>
-  );
-}
-
 /**
- * El menú: marca y empresa, las secciones y, al pie, el tema y la cuenta. Es el mismo en el panel
- * lateral y en el cajón de las pantallas angostas; en el cajón, `alCerrar` agrega el botón de
- * cerrar y lo cierra al elegir una entrada.
+ * El menú, el mismo de WorkLog: la marca, las secciones y, al pie, el menú de la cuenta (empresa,
+ * tema y salida). Es el mismo en el panel lateral y en el cajón de las pantallas angostas; en el
+ * cajón, `alCerrar` agrega el botón de cerrar y lo cierra al elegir una entrada.
  */
 function MenuLateral({ alCerrar }: { alCerrar?: () => void }) {
-  const { correo, sesion, esAdministradorPlataforma, salir } = useSesion();
+  const { correo, sesion, empresaActiva, esAdministradorPlataforma, cambiarEmpresa, salir } = useSesion();
   const { oscuro, alternar } = useTema();
-  const nombre = sesion?.nombre ?? null;
-  const inicial = (nombre ?? correo ?? "?").trim().charAt(0).toUpperCase();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const grupos = GRUPOS
     .map((g) => ({ ...g, entradas: g.entradas.filter((e) => !e.soloAdministrador || esAdministradorPlataforma) }))
     .filter((g) => g.entradas.length > 0);
 
+  const rol = empresaActiva?.rol
+    ? nombreRol(empresaActiva.rol)
+    : esAdministradorPlataforma ? "Administrador de plataforma" : null;
+  const empresa = empresaActiva?.nombre ?? "Sin empresa";
+
   return (
     <div className="menu-contenido">
-      <div className="menu-arriba">
-        <div className="menu-marca">
-          <Link to="/monitor" className="menu-logo lugar-marca" aria-label="Track · INTECHSYS ONE" onClick={alCerrar}>
-            <MarcaProducto />
-          </Link>
-          {alCerrar && (
-            <button type="button" className="boton fantasma chico icono menu-cerrar" aria-label="Cerrar menú" onClick={alCerrar}>
-              <X aria-hidden />
-            </button>
-          )}
-        </div>
-        <SelectorEmpresa />
+      <div className="menu-marca">
+        <Link to="/monitor" className="menu-logo lugar-marca" aria-label="Track · INTECHSYS ONE" onClick={alCerrar}>
+          <MarcaProducto />
+        </Link>
+        {alCerrar && (
+          <button type="button" className="boton fantasma chico icono menu-cerrar" aria-label="Cerrar menú" onClick={alCerrar}>
+            <X aria-hidden />
+          </button>
+        )}
       </div>
 
-      <nav className="menu-secciones" aria-label="Secciones">
-        {grupos.map((g) => (
-          <div key={g.titulo} className="menu-grupo">
-            {/* Con un solo grupo el título sobra: solo el administrador ve dos. */}
-            {grupos.length > 1 && <p className="menu-titulo">{g.titulo}</p>}
-            <ul>
-              {g.entradas.map(({ a, nombre: rotulo, Icono }) => (
-                <li key={a}>
-                  <NavLink to={a} className="menu-enlace" onClick={alCerrar}>
-                    <Icono aria-hidden />
-                    {rotulo}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
+      <div className="menu-cuerpo">
+        <nav className="menu-secciones" aria-label="Secciones">
+          {grupos.map((g) => (
+            <div key={g.titulo} className="menu-grupo">
+              <p className="menu-titulo">{g.titulo}</p>
+              <ul>
+                {g.entradas.map(({ a, nombre: rotulo, Icono }) => (
+                  <li key={a}>
+                    <NavLink to={a} className="menu-enlace" onClick={alCerrar}>
+                      <Icono aria-hidden />
+                      {rotulo}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
 
-      <div className="menu-pie">
-        <button type="button" className="menu-enlace" onClick={alternar}>
-          {oscuro ? <Sun aria-hidden /> : <Moon aria-hidden />}
-          {oscuro ? "Usar tema claro" : "Usar tema oscuro"}
-        </button>
-        <div className="menu-usuario">
-          <span className="avatar" aria-hidden>{inicial}</span>
-          <span className="menu-usuario-texto">
-            {nombre && <strong title={nombre}>{nombre}</strong>}
-            {correo && <span title={correo}>{correo}</span>}
-          </span>
+        <div className="menu-pie">
+          <MenuUsuario
+            nombre={sesion?.nombre || correo || "Tu cuenta"}
+            correo={correo}
+            detalle={rol ? `${rol} · ${empresa}` : empresa}
+            empresas={(sesion?.empresas ?? []).map((e) => ({ id: e.oneTenantId, nombre: e.nombre }))}
+            empresaActiva={empresaActiva?.oneTenantId ?? null}
+            alElegirEmpresa={(id) => {
+              cambiarEmpresa(id);
+              // Lo abierto (un equipo, una geocerca) es de la empresa anterior.
+              if (pathname !== "/monitor") navigate(pathname, { replace: true });
+            }}
+            oscuro={oscuro}
+            alAlternarTema={alternar}
+            alSalir={salir}
+          />
         </div>
-        <button type="button" className="menu-enlace" onClick={salir}>
-          <LogOut aria-hidden /> Salir
-        </button>
       </div>
     </div>
   );

@@ -55,8 +55,14 @@ export function ProveedorTema({ children }: { children: ReactNode }) {
     }
   }, [fijado]);
 
+  // Siempre pasa al contrario del que se ve. Si ese es el del sistema, no hace falta fijarlo: se
+  // vuelve a seguir al sistema.
   const alternar = useCallback(() => {
-    setFijado((actual) => (actual ? null : sistemaOscuro ? "light" : "dark"));
+    setFijado((actual) => {
+      const seVeOscuro = actual ? actual === "dark" : sistemaOscuro;
+      const nuevo: Esquema = seVeOscuro ? "light" : "dark";
+      return (nuevo === "dark") === sistemaOscuro ? null : nuevo;
+    });
   }, [sistemaOscuro]);
 
   const valor = useMemo<Contexto>(
