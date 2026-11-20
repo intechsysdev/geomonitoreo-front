@@ -51,7 +51,7 @@ export function Marco({ children }: { children: ReactNode }) {
 
   const rol = empresaActiva?.rol
     ? nombreRol(empresaActiva.rol)
-    : esAdministradorPlataforma ? "Administrador de plataforma" : null;
+    : esAdministradorPlataforma ? "Administrador" : null;
   const empresa = empresaActiva?.nombre ?? "Sin empresa";
 
   return (
